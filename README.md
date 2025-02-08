@@ -33,7 +33,7 @@ This project uses OpenCV, MediaPipe, and other libraries to capture and process 
           - msvc-runtime
     ```
 
-2. Open a terminal and navigate to the directory containing the [environment.yaml](http://_vscodecontentref_/2) file.
+2. Open a terminal and navigate to the directory containing the environment.yaml file.
 
 3. Run the following command to create the conda environment:
 
@@ -48,7 +48,7 @@ This project uses OpenCV, MediaPipe, and other libraries to capture and process 
     ```
 
 ### Step 2: Run the Application
-1. Navigate to the [src](http://_vscodecontentref_/3) directory:
+1. Navigate to the src directory:
 
     ```sh
     cd src
