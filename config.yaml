@@ -1,0 +1,32 @@
+camera:
+  device: 0
+  frame_width: 640
+  frame_height: 480
+
+shape:
+  default: "rectangle"
+  default_position: [100, 100]
+  default_size: 100
+
+blur:
+  default_slider: 10
+  max_value: 100
+
+gesture:
+  file: "gesture_library.json"
+  similarity_threshold: 0.85
+
+ui:
+  window_title: "NUS ISS Posture Keypoints Recognition Demo"
+  window_geometry: "1000x700"
+
+particles:
+  count: 200
+  speed_min: 4
+  speed_max: 10
+  size_min: 3
+  size_max: 7
+  life_min: 15
+  life_max: 35
+  gravity_min: 0.05
+  gravity_max: 0.2

@@ -1,0 +1,19 @@
+name: tanuki
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - numpy
+  - pillow
+  - pyyaml
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cudatoolkit=11.3
+  - pip
+  - pip:
+    - opencv-python
+    - mediapipe
+    - msvc-runtime
