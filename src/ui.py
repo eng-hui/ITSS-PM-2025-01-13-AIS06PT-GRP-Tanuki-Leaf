@@ -110,8 +110,12 @@ class Application:
         if ret:
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
-            processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                             self.blur_intensity, self.hands, self.mp_drawing)
+            if self.blur_intensity > 1:
+                processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
+                                                 self.blur_intensity, self.hands, self.mp_drawing)
+            else:
+                processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
+                                                 None, self.hands, self.mp_drawing)
             frame_resized = cv2.resize(processed_frame, (self.lmain.winfo_width(), self.lmain.winfo_height()))
             cv2image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2image)
