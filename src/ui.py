@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 from .config import config
 from .gesture import GestureLibrary
 from .shapes import ShapeManager
-from .mediapipe_utils import get_hands, get_drawing_utils
+from .mediapipe_utils import get_hands, get_drawing_utils, extract_hand_vectors
 from .detection import detect_objects
 from .gestureedit import GestureEditor  # Import GestureEditor
 
@@ -100,7 +100,6 @@ class Application:
 
         hand_landmarks = results.multi_hand_landmarks[0]
         hand_label = results.multi_handedness[0].classification[0].label
-        from .mediapipe_utils import extract_hand_vectors
         vectors = extract_hand_vectors(hand_landmarks)
         side = "Left" if hand_label.lower() == "left" else "Right"
         self.gesture_lib.add_gesture(side, gesture_name, vectors)
