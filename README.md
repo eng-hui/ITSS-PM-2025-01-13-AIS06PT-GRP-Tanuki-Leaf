@@ -48,16 +48,10 @@ This project uses OpenCV, MediaPipe, and other libraries to capture and process 
     ```
 
 ### Step 2: Run the Application
-1. Navigate to the src directory:
+1. Run the main application:
 
     ```sh
-    cd src
-    ```
-
-2. Run the main application:
-
-    ```sh
-    python main.py
+    python -m src.main
     ```
 
 ## Usage
