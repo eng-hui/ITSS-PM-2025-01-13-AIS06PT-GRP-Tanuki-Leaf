@@ -9,29 +9,7 @@ This project uses OpenCV, MediaPipe, and other libraries to capture and process 
 ## Setup
 
 ### Step 1: Create the Conda Environment
-1. Ensure you have the `environment.yaml` file in the root directory of your project. The file should look like this:
-
-    ```yaml
-    name: tanuki
-    channels:
-      - defaults
-      - conda-forge
-      - pytorch
-    dependencies:
-      - python=3.10
-      - numpy
-      - pillow
-      - pyyaml
-      - pytorch
-      - torchvision
-      - torchaudio
-      - cudatoolkit=11.3
-      - pip
-      - pip:
-          - opencv-python
-          - mediapipe
-          - msvc-runtime
-    ```
+1. Ensure you have the `environment.yaml` file in the root directory of your project. 
 
 2. Open a terminal and navigate to the directory containing the environment.yaml file.
 
