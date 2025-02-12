@@ -5,41 +5,7 @@ from .explosion import create_explosion, update_particles
 from .mediapipe_utils import extract_hand_vectors
 from .utils import draw_text_with_outline
 
-# Initialize camera settings
-brightness_level = 1.0
-hue_level = 0
-night_mode = False
-grayscale_mode = False
-grayscale_toggle = False
-
-def adjust_brightness(frame, brightness):
-    return cv2.convertScaleAbs(frame, alpha=brightness, beta=0)
-
-def adjust_hue(frame, hue):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    hsv[:, :, 0] = (hsv[:, :, 0] + hue) % 180
-    return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-
-def toggle_night_mode(frame, enable):
-    if enable:
-        return cv2.convertScaleAbs(frame, alpha=0.5, beta=0)
-    return frame
-
-def toggle_grayscale(frame, enable):
-    if enable:
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    return frame
-
-def reset_settings():
-    global brightness_level, hue_level, night_mode, grayscale_mode, grayscale_toggle
-    brightness_level = 1.0
-    hue_level = 0
-    night_mode = False
-    grayscale_mode = False
-    grayscale_toggle = False
-
 def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_drawing):
-    global brightness_level, hue_level, night_mode, grayscale_mode, grayscale_toggle
     image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(image_rgb)
     h, w, _ = frame.shape
@@ -72,24 +38,6 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
                 explosion_triggered = True
                 break
 
-            # Adjust camera settings based on gesture
-            if classified_gesture == "IncreaseBrightness":
-                brightness_level = min(brightness_level + 0.1, 2.0)
-            elif classified_gesture == "DecreaseBrightness":
-                brightness_level = max(brightness_level - 0.1, 0.5)
-            elif classified_gesture == "IncreaseHue":
-                hue_level = (hue_level + 10) % 180
-            elif classified_gesture == "DecreaseHue":
-                hue_level = (hue_level - 10) % 180
-            elif classified_gesture == "ResetSettings":
-                reset_settings()
-            elif classified_gesture == "ToggleNightMode":
-                night_mode = not night_mode
-            elif classified_gesture == "ToggleGrayscale":
-                if not grayscale_toggle:
-                    grayscale_mode = not grayscale_mode
-                    grayscale_toggle = True
-
     mask_3channel = cv2.merge([mask, mask, mask])
     final_frame = np.where(mask_3channel == 255, frame, blurred_frame)
 
@@ -110,15 +58,4 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
 
     shape_manager.draw(final_frame)
     update_particles(final_frame)
-
-    # Apply camera settings adjustments
-    final_frame = adjust_brightness(final_frame, brightness_level)
-    final_frame = adjust_hue(final_frame, hue_level)
-    final_frame = toggle_night_mode(final_frame, night_mode)
-    final_frame = toggle_grayscale(final_frame, grayscale_mode)
-
-    # Reset grayscale toggle if no hand is detected
-    if not results.multi_hand_landmarks:
-        grayscale_toggle = False
-
     return final_frame

@@ -45,16 +45,7 @@ class Application:
         self.gesture_entry = tk.Entry(self.button_frame)
         self.gesture_entry.pack(pady=5, fill=tk.X)
 
-        tk.Label(self.button_frame, text="Gesture Action").pack(pady=5)
-        self.gesture_action_var = tk.StringVar(self.root)
-        self.gesture_action_var.set("Select Action")  # default value
-        self.gesture_action_menu = tk.OptionMenu(self.button_frame, self.gesture_action_var,
-                                                 "IncreaseBrightness", "DecreaseBrightness",
-                                                 "IncreaseHue", "DecreaseHue",
-                                                 "ResetSettings", "ToggleNightMode", "ToggleGrayscale")
-        self.gesture_action_menu.pack(pady=5, fill=tk.X)
-
-        tk.Button(self.button_frame, text="Capture Gesture", command=self.add_gesture) \
+        tk.Button(self.button_frame, text="Capture Gesture", command=self.capture_gesture_action) \
             .pack(pady=5, fill=tk.X)
 
         # Add the new button for launching GestureEdit
@@ -89,14 +80,10 @@ class Application:
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
 
-    def add_gesture(self):
+    def capture_gesture_action(self):
         gesture_name = self.gesture_entry.get().strip()
-        gesture_action = self.gesture_action_var.get()
         if not gesture_name:
             print("No gesture name entered.")
-            return
-        if gesture_action == "Select Action":
-            print("No gesture action selected.")
             return
 
         ret, frame = self.cap.read()
@@ -117,10 +104,6 @@ class Application:
         side = "Left" if hand_label.lower() == "left" else "Right"
         self.gesture_lib.add_gesture(side, gesture_name, vectors)
         print(f"Captured gesture '{gesture_name}' for {side} hand.")
-
-        # Register the selected gesture action
-        self.gesture_lib.add_gesture(side, gesture_action, vectors)
-        print(f"Linked gesture '{gesture_name}' to action '{gesture_action}'.")
 
     def show_frame(self):
         ret, frame = self.cap.read()
