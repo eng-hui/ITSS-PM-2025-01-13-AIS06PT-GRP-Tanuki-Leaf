@@ -1,4 +1,4 @@
-name: tanuki2
+name: tanuki
 channels:
   - nvidia
   - pytorch
