@@ -24,6 +24,10 @@ This project uses OpenCV, MediaPipe, and other libraries to capture and process 
     ```sh
     conda activate tanuki
     ```
+5. Install streamdiffusion tensorrt
+    ```sh
+    python -m streamdiffusion.tools.install-tensorrt
+    ```
 
 ### Step 2: Run the Application
 1. Run the main application:

@@ -5,7 +5,7 @@ from .explosion import create_explosion, update_particles
 from .mediapipe_utils import extract_hand_vectors
 from .utils import draw_text_with_outline
 
-def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_drawing):
+def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_drawing, trigger_diffusion_callback=None, trigger_explosion_callback=None):
     image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(image_rgb)
     h, w, _ = frame.shape
@@ -32,10 +32,16 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
             vectors = extract_hand_vectors(hlm)
             side = "Left" if handedness.classification[0].label.lower() == "left" else "Right"
             classified_gesture = gesture_lib.classify(vectors, side)
+            # If the special trigger gesture is detected, invoke the diffusion callback
+            if collision and classified_gesture == "66666" and trigger_diffusion_callback is not None:
+                trigger_diffusion_callback(frame)  # send raw frame for diffusion
+            # Existing explosion trigger using shape_manager’s target gesture.
             if collision and classified_gesture == shape_manager.target_gesture:
                 create_explosion(x0 + shape_manager.size // 2, y0 + shape_manager.size // 2)
                 shape_manager.move(w, h)
                 explosion_triggered = True
+                if trigger_explosion_callback:
+                    trigger_explosion_callback()  # Callback to update prompt_index in Application.
                 break
 
     mask_3channel = cv2.merge([mask, mask, mask])
