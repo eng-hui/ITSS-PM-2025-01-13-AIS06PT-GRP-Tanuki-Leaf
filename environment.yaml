@@ -18,4 +18,5 @@ dependencies:
     - torch
     - torchvision
     - torchaudio
-    
+    - streamdiffusion[tensorrt]
+    - huggingface_hub==0.25.2
