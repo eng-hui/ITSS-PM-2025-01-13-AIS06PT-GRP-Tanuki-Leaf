@@ -30,34 +30,24 @@ class Application:
         self.root.grid_columnconfigure(1, weight=1)
 
         # Diffusion prompt list and index. Pressing a trigger will step to the next prompt.
-        # self.prompt_array = [
-        #     "A young woman with short, curly silver hair and thick-framed glasses, wearing a lab coat, focused on her chemistry experiment.",
-        #     "A rugged bounty hunter with a cybernetic eye, wearing a tattered leather jacket and carrying a plasma rifle in a neon-lit dystopian city.",
-        #     "A soft-spoken librarian with braided auburn hair, round glasses, and a vintage dress, carefully placing books on a towering wooden shelf.",
-        #     "A street artist with vibrant green hair, wearing a paint-stained hoodie, spraying a giant mural of a phoenix on a city wall at night.",
-        #     "A pirate captain with an eyepatch and a long, flowing coat, gripping the wheel of their ship as a storm brews on the horizon.",
-        #     "A futuristic android with sleek silver plating, glowing blue eyes, and a human-like synthetic face, staring at their reflection in a mirror.",
-        #     "A mysterious detective in a noir-style trench coat and fedora, smoking a cigar as they examine a cryptic note under a streetlamp.",
-        #     "A medieval knight in intricately detailed armour, holding a massive sword and standing triumphantly in a battlefield at dawn.",
-        #     "A punk rock musician with spiky red hair, ripped jeans, and multiple piercings, playing an electric guitar in front of a roaring crowd.",
-        #     "A space explorer in a sleek astronaut suit, floating weightlessly inside a high-tech spaceship, staring at the distant glow of a nebula.",
-        #     "A mischievous rogue with a dagger tucked into their belt, smirking as they flip a stolen coin in the dim light of a tavern.",
-        #     "A cyberpunk hacker with a neon visor and a hooded jacket, typing furiously on a holographic keyboard as data streams across the screen."
-        # ]
+        self.prompt_array = [
+            "A young woman with short, curly silver hair and thick-framed glasses, wearing a lab coat, focused on her chemistry experiment.",
+            "A rugged bounty hunter with a cybernetic eye, wearing a tattered leather jacket and carrying a plasma rifle in a neon-lit dystopian city.",
+            "A soft-spoken librarian with braided auburn hair, round glasses, and a vintage dress, carefully placing books on a towering wooden shelf.",
+            "A street artist with vibrant green hair, wearing a paint-stained hoodie, spraying a giant mural of a phoenix on a city wall at night.",
+            "A pirate captain with an eyepatch and a long, flowing coat, gripping the wheel of their ship as a storm brews on the horizon.",
+            "A futuristic android with sleek silver plating, glowing blue eyes, and a human-like synthetic face, staring at their reflection in a mirror.",
+            "A mysterious detective in a noir-style trench coat and fedora, smoking a cigar as they examine a cryptic note under a streetlamp.",
+            "A medieval knight in intricately detailed armour, holding a massive sword and standing triumphantly in a battlefield at dawn.",
+            "A punk rock musician with spiky red hair, ripped jeans, and multiple piercings, playing an electric guitar in front of a roaring crowd.",
+            "A space explorer in a sleek astronaut suit, floating weightlessly inside a high-tech spaceship, staring at the distant glow of a nebula.",
+            "A mischievous rogue with a dagger tucked into their belt, smirking as they flip a stolen coin in the dim light of a tavern.",
+            "A cyberpunk hacker with a neon visor and a hooded jacket, typing furiously on a holographic keyboard as data streams across the screen."
+        ]
 
-        # self.prompt_index = 0
-        self.prompt_array = {
-            '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
-            '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
-            '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
-        }
-
-        # Default values
-        self.diffusion_prompt = None
-        self.negative_prompt = (
-            "low quality, bad quality, blurry, distorted, malformed hands, unnatural anatomy, overexposed, "
-            "mutated faces, extra limbs, low resolution, poorly drawn, ugly, deformed, watermark, artifacts"
-        )
+        self.prompt_index = 0
+        self.diffusion_prompt = self.prompt_array[self.prompt_index]
+        self.negative_prompt = "low quality, bad quality, blurry, malformed"
 
         # Left frame for controls.
         self.button_frame = tk.Frame(self.root)
@@ -172,42 +162,6 @@ class Application:
         self.diffusion_prompt = self.prompt_array[self.prompt_index]
         print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
 
-    #  delete
-    # def capture_gesture_action(self):
-    #     """Captures a gesture and updates the diffusion prompt."""
-    #     gesture_name = self.gesture_entry.get().strip()
-    #     if not gesture_name:
-    #         print("No gesture name entered.")
-    #         return
-
-    #     ret, frame = self.cap.read()
-    #     if not ret:
-    #         print("Unable to read from camera.")
-    #         return
-
-    #     frame = cv2.flip(frame, 1)
-    #     image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #     results = self.hands.process(image_rgb)
-
-    #     if not results.multi_hand_landmarks or not results.multi_handedness:
-    #         print("No hand detected.")
-    #         return
-
-    #     hand_landmarks = results.multi_hand_landmarks[0]
-    #     hand_label = results.multi_handedness[0].classification[0].label
-    #     vectors = extract_hand_vectors(hand_landmarks)
-    #     side = "Left" if hand_label.lower() == "left" else "Right"
-
-    #     self.gesture_lib.add_gesture(side, gesture_name, vectors)
-    #     print(f"Captured gesture '{gesture_name}' for {side} hand.")
-
-    #     # Update diffusion prompt based on detected gesture
-    #     self.diffusion_prompt = self.prompt_array.get(gesture_name, self.diffusion_prompt)
-    #     if self.diffusion_prompt:
-    #         print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
-    #     else:
-    #         print(f"No matching prompt found for gesture '{gesture_name}'. Keeping the previous prompt.")
-            
     def process_diffusion(self, frame):
         # Set flag so no new diffusion is started while running.
         self.diffusion_running = True
@@ -237,90 +191,35 @@ class Application:
         self.diffusion_prompt = self.prompt_array[self.prompt_index]
         print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
 
-    # def show_frame(self):
-    #     ret, frame = self.cap.read()
-    #     if ret:
-    #         frame = cv2.flip(frame, 1)
-    #         frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
-    #         if self.blur_intensity > 1:
-    #             processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-    #                                              self.blur_intensity, self.hands, self.mp_drawing,
-    #                                              trigger_explosion_callback=self.trigger_explosion)
-    #         else:
-    #             processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-    #                                              None, self.hands, self.mp_drawing,
-    #                                              trigger_explosion_callback=self.trigger_explosion)
-                                               
-    #         # Start a diffusion process in the background if not already running.
-    #         if not self.diffusion_running:
-    #             threading.Thread(target=self.process_diffusion, args=(frame,), daemon=True).start()
-            
-    #         frame_resized = cv2.resize(processed_frame, (self.camera_label.winfo_width(), self.camera_label.winfo_height()))
-    #         cv2image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
-    #         img = Image.fromarray(cv2image)
-    #         imgtk = ImageTk.PhotoImage(image=img)
-    #         self.camera_label.imgtk = imgtk
-    #         self.camera_label.configure(image=imgtk)
-    #     self.camera_label.after(30, self.show_frame)
-    
     def show_frame(self):
         ret, frame = self.cap.read()
-        # Check if the frame is valid
-        if not ret:
-            print("Failed to read from camera.")
-            return
-        
-        print("test")  # This should print now if the camera read was successful
-    
         if ret:
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
-            
-            # Process the frame to detect the gesture.
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.hands.process(image_rgb)
-            print(f"test")
-            # print("test")
-            if results.multi_hand_landmarks:
-                hand_landmarks = results.multi_hand_landmarks[0]  # Assuming single hand detection.
-                gesture_name = self.gesture_lib.recognize_gesture(hand_landmarks)  # Use your gesture recognition method here.
-                
-                print(f"Recognized gesture: {gesture_name}")
-                # If a gesture is recognized, update the diffusion prompt.
-                if gesture_name:
-                    self.diffusion_prompt = self.prompt_array.get(gesture_name, self.diffusion_prompt)
-                    print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
-                else:
-                    print("No recognized gesture.")
-            
-            # Continue with object detection or other processing.
             if self.blur_intensity > 1:
                 processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                                self.blur_intensity, self.hands, self.mp_drawing,
-                                                trigger_explosion_callback=self.trigger_explosion)
+                                                 self.blur_intensity, self.hands, self.mp_drawing,
+                                                 trigger_explosion_callback=self.trigger_explosion)
             else:
                 processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                                None, self.hands, self.mp_drawing,
-                                                trigger_explosion_callback=self.trigger_explosion)
-                                            
+                                                 None, self.hands, self.mp_drawing,
+                                                 trigger_explosion_callback=self.trigger_explosion)
+                                               
             # Start a diffusion process in the background if not already running.
             if not self.diffusion_running:
                 threading.Thread(target=self.process_diffusion, args=(frame,), daemon=True).start()
             
-            # Resize frame to fit camera label.
             frame_resized = cv2.resize(processed_frame, (self.camera_label.winfo_width(), self.camera_label.winfo_height()))
             cv2image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
             self.camera_label.imgtk = imgtk
             self.camera_label.configure(image=imgtk)
-            
         self.camera_label.after(30, self.show_frame)
-
 
     def run(self):
         self.root.update_idletasks()
-        self.show_frame()        
+        self.show_frame()
         self.root.mainloop()
 
 def start_ui():
