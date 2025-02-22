@@ -18,6 +18,7 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
     mask = np.zeros((h, w), dtype=np.uint8)
     x0, y0 = shape_manager.position
     explosion_triggered = False
+    classified_gesture = None  # Initialize classified_gesture
 
     if results.multi_hand_landmarks and results.multi_handedness:
         for hlm, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
@@ -44,6 +45,7 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
                     trigger_explosion_callback()  # Callback to update prompt_index in Application.
                 break
 
+
     mask_3channel = cv2.merge([mask, mask, mask])
     final_frame = np.where(mask_3channel == 255, frame, blurred_frame)
 
@@ -64,4 +66,4 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
 
     shape_manager.draw(final_frame)
     update_particles(final_frame)
-    return final_frame
+    return final_frame, classified_gesture
