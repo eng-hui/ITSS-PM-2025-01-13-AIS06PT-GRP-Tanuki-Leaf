@@ -18,6 +18,36 @@ def launch_gesture_edit():
     editor = GestureEditor()
     editor.mainloop()
 
+#  delete 
+# class GestureLibrary:
+#     def __init__(self, gesture_file, similarity_threshold=0.8):
+#         self.library = self.load_gestures(gesture_file)
+#         self.similarity_threshold = similarity_threshold
+
+#     def load_gestures(self, gesture_file):
+#         # Load gestures from file
+#         pass
+
+#     def add_gesture(self, side, gesture_name, vectors):
+#         # Add gesture to library
+#         pass
+
+#     def recognize_gesture(self, hand_landmarks):
+#         # Implement gesture recognition logic here
+#         # This is a placeholder implementation
+#         recognized_gesture = None
+#         # Compare hand_landmarks with stored gestures in the library
+#         for gesture_name, gesture_data in self.library.items():
+#             if self.compare_gestures(hand_landmarks, gesture_data):
+#                 recognized_gesture = gesture_name
+#                 break
+#         return recognized_gesture
+
+#     def compare_gestures(self, hand_landmarks, gesture_data):
+#         # Compare the given hand_landmarks with the gesture_data
+#         # Return True if they match, False otherwise
+#         pass
+    
 class Application:
     def __init__(self):
         self.config = config
@@ -168,9 +198,17 @@ class Application:
         print(f"Captured gesture '{gesture_name}' for {side} hand.")
 
         # Update to the next prompt in the array regardless of the gesture name.
-        self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
-        self.diffusion_prompt = self.prompt_array[self.prompt_index]
-        print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
+        # self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
+        # self.diffusion_prompt = self.prompt_array[self.prompt_index]
+        # print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
+        
+        # Recognize the gesture and update the diffusion prompt based on the recognized gesture.
+        recognized_gesture = self.gesture_lib.recognize_gesture(hand_landmarks)
+        if recognized_gesture:
+            self.diffusion_prompt = self.prompt_array.get(recognized_gesture, self.diffusion_prompt)
+            print(f"Recognized gesture '{recognized_gesture}'. Updated diffusion prompt to: {self.diffusion_prompt}")
+        else:
+            print("No recognized gesture. Keeping the previous prompt.")
 
     #  delete
     # def capture_gesture_action(self):
@@ -233,10 +271,11 @@ class Application:
         self.diffusion_label.image = imgtk  # Keep a reference.
 
     def trigger_explosion(self):
-        self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
-        self.diffusion_prompt = self.prompt_array[self.prompt_index]
-        print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
-
+        # self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
+        # self.diffusion_prompt = self.prompt_array[self.prompt_index]
+        # print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
+        print("placeholder")
+        
     # def show_frame(self):
     #     ret, frame = self.cap.read()
     #     if ret:
@@ -272,37 +311,40 @@ class Application:
         
         print("test")  # This should print now if the camera read was successful
     
+       
         if ret:
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
             
-            # Process the frame to detect the gesture.
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.hands.process(image_rgb)
-            print(f"test")
-            # print("test")
-            if results.multi_hand_landmarks:
-                hand_landmarks = results.multi_hand_landmarks[0]  # Assuming single hand detection.
-                gesture_name = self.gesture_lib.recognize_gesture(hand_landmarks)  # Use your gesture recognition method here.
-                
-                print(f"Recognized gesture: {gesture_name}")
-                # If a gesture is recognized, update the diffusion prompt.
-                if gesture_name:
-                    self.diffusion_prompt = self.prompt_array.get(gesture_name, self.diffusion_prompt)
-                    print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
-                else:
-                    print("No recognized gesture.")
-            
+           
             # Continue with object detection or other processing.
             if self.blur_intensity > 1:
-                processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
+                processed_frame, classified_gesture = detect_objects(frame, self.shape_manager, self.gesture_lib,
                                                 self.blur_intensity, self.hands, self.mp_drawing,
                                                 trigger_explosion_callback=self.trigger_explosion)
             else:
-                processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
+                processed_frame, classified_gesture = detect_objects(frame, self.shape_manager, self.gesture_lib,
                                                 None, self.hands, self.mp_drawing,
                                                 trigger_explosion_callback=self.trigger_explosion)
-                                            
+                                                       
+            # Update the diffusion prompt based on the classified gesture
+            print("name", classified_gesture)
+            
+             # original
+            # self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
+            # self.diffusion_prompt = self.prompt_array[self.prompt_index]
+            # print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
+        
+            # Define a callback to update the diffusion prompt
+            def update_diffusion_prompt_callback(classified_gesture):
+                if classified_gesture:
+                    self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+                    print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
+                else:
+                    print("No recognized gesture2.")
+                    
+            update_diffusion_prompt_callback(classified_gesture)
+                      
             # Start a diffusion process in the background if not already running.
             if not self.diffusion_running:
                 threading.Thread(target=self.process_diffusion, args=(frame,), daemon=True).start()
