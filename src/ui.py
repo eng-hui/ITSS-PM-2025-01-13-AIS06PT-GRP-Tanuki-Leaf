@@ -76,12 +76,21 @@ class Application:
         # ]
 
         # self.prompt_index = 0
-        self.prompt_array = {
-            '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
-            '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
-            '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
-        }
-
+        
+        
+        # self.prompt_array = {
+        #     '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
+        #     '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
+        #     '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
+        # }
+        
+        self.prompt_array = [
+            "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
+            "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
+            "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
+        ]
+        self.prompt_index = 0
+        
         # Default values
         self.diffusion_prompt = None
         self.negative_prompt = (
@@ -203,12 +212,12 @@ class Application:
         # print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
         
         # Recognize the gesture and update the diffusion prompt based on the recognized gesture.
-        recognized_gesture = self.gesture_lib.recognize_gesture(hand_landmarks)
-        if recognized_gesture:
-            self.diffusion_prompt = self.prompt_array.get(recognized_gesture, self.diffusion_prompt)
-            print(f"Recognized gesture '{recognized_gesture}'. Updated diffusion prompt to: {self.diffusion_prompt}")
-        else:
-            print("No recognized gesture. Keeping the previous prompt.")
+        # recognized_gesture = self.gesture_lib.recognize_gesture(hand_landmarks)
+        # if recognized_gesture:
+        #     self.diffusion_prompt = self.prompt_array.get(recognized_gesture, self.diffusion_prompt)
+        #     print(f"Recognized gesture '{recognized_gesture}'. Updated diffusion prompt to: {self.diffusion_prompt}")
+        # else:
+        #     print("No recognized gesture. Keeping the previous prompt.")
 
     #  delete
     # def capture_gesture_action(self):
@@ -252,6 +261,7 @@ class Application:
         # Convert frame and prepare PIL image.
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(image_rgb).resize((512, 512))
+        # print("inside function", self.diffusion_prompt)
         self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=50)
         # Warm up steps.
         self.stream(pil_image)
@@ -309,9 +319,6 @@ class Application:
             print("Failed to read from camera.")
             return
         
-        print("test")  # This should print now if the camera read was successful
-    
-       
         if ret:
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
@@ -328,26 +335,53 @@ class Application:
                                                 trigger_explosion_callback=self.trigger_explosion)
                                                        
             # Update the diffusion prompt based on the classified gesture
-            print("name", classified_gesture)
+            # print("name", classified_gesture)
             
              # original
             # self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
             # self.diffusion_prompt = self.prompt_array[self.prompt_index]
-            # print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
+            # print("throw in", self.prompt_array[self.prompt_index])
+            # print(f"Change prompt to: {self.diffusion_prompt}")
+            
         
             # Define a callback to update the diffusion prompt
-            def update_diffusion_prompt_callback(classified_gesture):
-                if classified_gesture:
-                    self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
-                    print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
-                else:
-                    print("No recognized gesture2.")
+            # def update_diffusion_prompt_callback(classified_gesture):
+            #     if classified_gesture:
+            #         self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+            #         print("name", self.diffusion_prompt)
+            #         # print(f"Updated diffusion prompts to: {self.diffusion_prompt}")
+            #     else:
+            #         print("No recognized gesture2.")
                     
-            update_diffusion_prompt_callback(classified_gesture)
-                      
+            # update_diffusion_prompt_callback(classified_gesture)
+            
+            # print("classified_gesture ", classified_gesture)
+            # print("text ", self.prompt_array.get(classified_gesture, self.diffusion_prompt))
+            # self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+            # print("d prompt", self.diffusion_prompt)
+            
+            # print(f"Updated diffusion prompts to: {self.diffusion_prompt}")
+             
+             
+            # print("classified_gesture ", classified_gesture)
+            
+            if classified_gesture and classified_gesture != 'None':
+                try:
+                    self.prompt_index = int(classified_gesture)
+                    if self.prompt_index < 0 or self.prompt_index >= len(self.prompt_array):
+                        raise ValueError("Invalid index")
+                except ValueError:
+                    print(f"Invalid classified_gesture: {classified_gesture}. Using default prompt index.")
+                    self.prompt_index = 0  # Default to the first prompt if the index is invalid
+        
+            self.diffusion_prompt = self.prompt_array[self.prompt_index]
+            print("d prompt:", self.diffusion_prompt)
+        
             # Start a diffusion process in the background if not already running.
             if not self.diffusion_running:
+                # print("Start diffusion check")
                 threading.Thread(target=self.process_diffusion, args=(frame,), daemon=True).start()
+            
             
             # Resize frame to fit camera label.
             frame_resized = cv2.resize(processed_frame, (self.camera_label.winfo_width(), self.camera_label.winfo_height()))
