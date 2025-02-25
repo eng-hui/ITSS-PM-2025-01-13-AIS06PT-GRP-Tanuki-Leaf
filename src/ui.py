@@ -82,7 +82,10 @@ class Application:
             '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
             '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
             '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
-            'satoru':"Generate an image of Gojo Satoru from Jujutsu Kaisen, featuring his signature white hair, blindfold or dark sunglasses, and his black high-collared outfit. Position him confidently, with a playful smile, against a dynamic background of blue energy and swirling cursed motifs, emphasizing his powerful and enigmatic presence.Create an image of Gojo Satoru, the powerful and enigmatic sorcerer from 'Jujutsu Kaisen.' Capture his iconic white hair, blindfold or sunglasses, and his confident, playful demeanor. He should be wearing his black high-collared outfit, standing against a backdrop that highlights his boundless energy and the mystic aura surrounding him, with hints of blue energy and swirling cursed energy motifs"
+            # 'satoru':"Generate an image of Gojo Satoru from Jujutsu Kaisen, featuring his signature white hair, blindfold or dark sunglasses, and his black high-collared outfit. Position him confidently, with a playful smile, against a dynamic background of blue energy and swirling cursed motifs, emphasizing his powerful and enigmatic presence, ultra-detailed, 8K",
+            'satoru':"Create an image of Gojo Satoru, the powerful and enigmatic sorcerer from 'Jujutsu Kaisen.' Capture his iconic white hair, blindfold or sunglasses, and his confident, playful demeanor. He should be wearing his black high-collared outfit, standing against a backdrop that highlights his boundless energy and the mystic aura surrounding him, with hints of blue energy and swirling cursed energy motifs, ultra-detailed, 8K",
+            '5': "Doraemon is a robotic cat from the future, with a round face, blue fur, no ears, and a pocket on his belly. He is often seen with his friend Nobita, a young Asian boy, ultra-detailed, 8K",
+            'naruto':"Create an image of Naruto Uzumaki, the beloved ninja from 'Naruto.' Show him with his spiky blond hair, orange jumpsuit, and headband, striking a dynamic pose that reflects his energetic and determined personality. Place him in a vibrant, action-packed setting with swirling chakra energy and iconic ninja symbols, capturing the essence of his adventurous spirit and ninja skills, ultra-detailed, 8K",
         }
         
         # self.prompt_array = [
@@ -94,9 +97,16 @@ class Application:
         
         # Default values
         self.diffusion_prompt = None
+        # self.negative_prompt = (
+        #     "low quality, bad quality, blurry, distorted, malformed hands, unnatural anatomy, overexposed, "
+        #     "mutated faces, extra limbs, low resolution, poorly drawn, ugly, deformed, watermark, artifacts"
+        # )
         self.negative_prompt = (
             "low quality, bad quality, blurry, distorted, malformed hands, unnatural anatomy, overexposed, "
-            "mutated faces, extra limbs, low resolution, poorly drawn, ugly, deformed, watermark, artifacts"
+            "mutated faces, extra limbs, low resolution, poorly drawn, ugly, deformed, watermark, artifacts, "
+            "low contrast, washed out colors, pixelated, grainy, noisy, out of focus, poorly lit, "
+            "overexposed highlights, underexposed shadows, incorrect proportions, awkward poses, "
+            "unrealistic textures, flat lighting, lack of detail, boring composition, cluttered background"
         )
 
         # Left frame for controls.
