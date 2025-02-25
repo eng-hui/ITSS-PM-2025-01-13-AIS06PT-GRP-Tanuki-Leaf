@@ -78,18 +78,19 @@ class Application:
         # self.prompt_index = 0
         
         
-        # self.prompt_array = {
-        #     '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
-        #     '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
-        #     '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
-        # }
+        self.prompt_array = {
+            '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
+            '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
+            '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
+            'satoru':"Generate an image of Gojo Satoru from Jujutsu Kaisen, featuring his signature white hair, blindfold or dark sunglasses, and his black high-collared outfit. Position him confidently, with a playful smile, against a dynamic background of blue energy and swirling cursed motifs, emphasizing his powerful and enigmatic presence.Create an image of Gojo Satoru, the powerful and enigmatic sorcerer from 'Jujutsu Kaisen.' Capture his iconic white hair, blindfold or sunglasses, and his confident, playful demeanor. He should be wearing his black high-collared outfit, standing against a backdrop that highlights his boundless energy and the mystic aura surrounding him, with hints of blue energy and swirling cursed energy motifs"
+        }
         
-        self.prompt_array = [
-            "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
-            "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
-            "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
-        ]
-        self.prompt_index = 0
+        # self.prompt_array = [
+        #     "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
+        #     "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
+        #     "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
+        # ]
+        # self.prompt_index = 0
         
         # Default values
         self.diffusion_prompt = None
@@ -337,23 +338,12 @@ class Application:
             # Update the diffusion prompt based on the classified gesture
             # print("name", classified_gesture)
             
-             # original
+            # original tanuki
             # self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
             # self.diffusion_prompt = self.prompt_array[self.prompt_index]
             # print("throw in", self.prompt_array[self.prompt_index])
             # print(f"Change prompt to: {self.diffusion_prompt}")
             
-        
-            # Define a callback to update the diffusion prompt
-            # def update_diffusion_prompt_callback(classified_gesture):
-            #     if classified_gesture:
-            #         self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
-            #         print("name", self.diffusion_prompt)
-            #         # print(f"Updated diffusion prompts to: {self.diffusion_prompt}")
-            #     else:
-            #         print("No recognized gesture2.")
-                    
-            # update_diffusion_prompt_callback(classified_gesture)
             
             # print("classified_gesture ", classified_gesture)
             # print("text ", self.prompt_array.get(classified_gesture, self.diffusion_prompt))
@@ -366,15 +356,23 @@ class Application:
             # print("classified_gesture ", classified_gesture)
             
             if classified_gesture and classified_gesture != 'None':
-                try:
-                    self.prompt_index = int(classified_gesture)
-                    if self.prompt_index < 0 or self.prompt_index >= len(self.prompt_array):
-                        raise ValueError("Invalid index")
-                except ValueError:
-                    print(f"Invalid classified_gesture: {classified_gesture}. Using default prompt index.")
-                    self.prompt_index = 0  # Default to the first prompt if the index is invalid
-        
-            self.diffusion_prompt = self.prompt_array[self.prompt_index]
+                #  by array method
+                # try:
+                #     self.prompt_index = int(classified_gesture)
+                #     if self.prompt_index < 0 or self.prompt_index >= len(self.prompt_array):
+                #         raise ValueError("Invalid index")
+                # except ValueError:
+                #     print(f"Invalid classified_gesture: {classified_gesture}. Using default prompt index.")
+                #     self.prompt_index = 0  # Default to the first prompt if the index is invalid
+                self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+            else:
+                classified_gesture = '1'
+                self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+            
+                    
+            #  by array 
+            # self.diffusion_prompt = self.prompt_array[self.prompt_index]
+            
             print("d prompt:", self.diffusion_prompt)
         
             # Start a diffusion process in the background if not already running.
