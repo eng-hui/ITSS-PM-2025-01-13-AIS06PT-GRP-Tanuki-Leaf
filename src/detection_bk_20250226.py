@@ -20,9 +20,6 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
     explosion_triggered = False
     classified_gesture = None  # Initialize classified_gesture
 
-    left_hand_gesture = None
-    right_hand_gesture = None
-
     if results.multi_hand_landmarks and results.multi_handedness:
         for hlm, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
             collision = False
@@ -35,18 +32,12 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
 
             vectors = extract_hand_vectors(hlm)
             side = "Left" if handedness.classification[0].label.lower() == "left" else "Right"
-            gesture = gesture_lib.classify(vectors, side)
-            
-            if side == "Left":
-                left_hand_gesture = gesture
-            else:
-                right_hand_gesture = gesture
-
+            classified_gesture = gesture_lib.classify(vectors, side)
             # If the special trigger gesture is detected, invoke the diffusion callback
-            if collision and gesture == "66666" and trigger_diffusion_callback is not None:
+            if collision and classified_gesture == "66666" and trigger_diffusion_callback is not None:
                 trigger_diffusion_callback(frame)  # send raw frame for diffusion
             # Existing explosion trigger using shape_manager’s target gesture.
-            if collision and gesture == shape_manager.target_gesture:
+            if collision and classified_gesture == shape_manager.target_gesture:
                 create_explosion(x0 + shape_manager.size // 2, y0 + shape_manager.size // 2)
                 shape_manager.move(w, h)
                 explosion_triggered = True
@@ -54,20 +45,7 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
                     trigger_explosion_callback()  # Callback to update prompt_index in Application.
                 break
 
-    # Check for the specific gesture combination
-    # if left_hand_gesture == "naruto" and right_hand_gesture == "naruto":
-    #     classified_gesture = "naruto"
 
-    # Check for the specific gesture combination for naruto
-    if left_hand_gesture == "naruto" and right_hand_gesture == "naruto":
-        classified_gesture = "naruto"
-    else:
-        # For other gestures, use either left or right hand gesture
-        if left_hand_gesture and left_hand_gesture != "naruto" :
-            classified_gesture = left_hand_gesture
-        elif right_hand_gesture and right_hand_gesture != "naruto":
-            classified_gesture = right_hand_gesture
-            
     mask_3channel = cv2.merge([mask, mask, mask])
     final_frame = np.where(mask_3channel == 255, frame, blurred_frame)
 
