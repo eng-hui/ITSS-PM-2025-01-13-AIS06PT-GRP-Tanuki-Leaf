@@ -156,13 +156,6 @@ class Application:
         self.camera_label = tk.Label(self.video_frame)
         self.camera_label.grid(row=0, column=0, sticky="nsew")
 
-        # Teleprompter banner
-        self.teleprompter_canvas = tk.Canvas(self.video_frame, height=30, bg="black")
-        self.teleprompter_canvas.grid(row=1, column=0, sticky="ew")
-        self.teleprompter_text = self.teleprompter_canvas.create_text(
-            self.teleprompter_canvas.winfo_width(), 15, text="", fill="white", anchor="w"
-        )
-        
         # Initialise camera.
         self.cap = cv2.VideoCapture(self.config["camera"]["device"])
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config["camera"]["frame_width"])
@@ -286,10 +279,13 @@ class Application:
         pil_image = Image.fromarray(image_rgb).resize((512, 512))
         # print("inside function", self.diffusion_prompt)
         self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=50)
-        # Warm up steps.
-        self.stream(pil_image)
-        for _ in range(4):
-            _ = self.stream(pil_image)
+        # # Warm up steps.
+        # self.stream(pil_image)
+        
+        if self.warmup_flag:
+            for _ in range(4):
+                _ = self.stream(pil_image)
+            self.warmup_flag = False    
         # Generate diffusion image.
         x_output = self.stream(pil_image)
         generated = postprocess_image(x_output, output_type="pil")[0]
@@ -411,24 +407,8 @@ class Application:
             self.camera_label.imgtk = imgtk
             self.camera_label.configure(image=imgtk)
             
-            # Update teleprompter text
-            self.update_teleprompter_text(self.diffusion_prompt)
-            
-            
         self.camera_label.after(30, self.show_frame)
 
-    def update_teleprompter_text(self, text):
-        self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
-        self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
-        self.scroll_teleprompter()
-
-    def scroll_teleprompter(self):
-        x, y = self.teleprompter_canvas.coords(self.teleprompter_text)
-        if x + self.teleprompter_canvas.bbox(self.teleprompter_text)[2] > 0:
-            # self.teleprompter_canvas.move(self.teleprompter_text, -2, 0)
-            # self.teleprompter_canvas.after(50, self.scroll_teleprompter)
-            self.teleprompter_canvas.move(self.teleprompter_text, -5, 0)  # Increase the move distance
-            self.teleprompter_canvas.after(30, self.scroll_teleprompter)  # Decrease the delay
 
     def run(self):
         self.root.update_idletasks()
