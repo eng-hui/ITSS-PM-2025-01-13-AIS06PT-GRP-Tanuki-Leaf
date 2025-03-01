@@ -12,7 +12,7 @@ from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
-
+import numpy as np
 def launch_gesture_edit():
     # Launch GestureEditor
     editor = GestureEditor()
@@ -31,7 +31,7 @@ class Application:
 
         # Diffusion prompt list and index. Pressing a trigger will step to the next prompt.
         self.prompt_array = [
-            "A young woman with short, curly silver hair and thick-framed glasses, wearing a lab coat, focused on her chemistry experiment.",
+            "gojo satoru, white hair, black eye mask",
             "A rugged bounty hunter with a cybernetic eye, wearing a tattered leather jacket and carrying a plasma rifle in a neon-lit dystopian city.",
             "A soft-spoken librarian with braided auburn hair, round glasses, and a vintage dress, carefully placing books on a towering wooden shelf.",
             "A street artist with vibrant green hair, wearing a paint-stained hoodie, spraying a giant mural of a phoenix on a city wall at night.",
@@ -114,13 +114,13 @@ class Application:
         )
         self.stream = StreamDiffusion(
             self.pipe,
-            t_index_list=[32,34,36,38],
+            t_index_list=[16,18,20,22],
             torch_dtype=torch.float16,
         )
         self.stream.load_lcm_lora()
         
         # load multiple lora, if trained properly, each lora should only has effect when the prompt contains keyword
-        self.stream.pipe.load_lora_weights("data/gojo.safetensor")
+        self.stream.pipe.load_lora_weights("data/gojo.safetensors")
 
         self.stream.fuse_lora()
         self.stream.vae = AutoencoderTiny.from_pretrained("madebyollin/taesd").to(
@@ -132,12 +132,19 @@ class Application:
 
         # Flag to avoid overlapping diffusion tasks.
         self.diffusion_running = False
+        self.prepare_stream()
 
 
     def prepare_stream(self):
         pil_image = None # fake image
-        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=50)
+        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=25)
         # Warm up steps.
+        ret, frame = self.cap.read()
+        if not ret:
+            print("Unable to read from camera.")
+            return
+        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(image_rgb).resize((512, 512))
         self.stream(pil_image)
         for _ in range(4):
             _ = self.stream(pil_image)
@@ -183,7 +190,6 @@ class Application:
         # Convert frame and prepare PIL image.
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(image_rgb).resize((512, 512))
-        self.prepare_stream()
         # Generate diffusion image.
         x_output = self.stream(pil_image)
         generated = postprocess_image(x_output, output_type="pil")[0]
