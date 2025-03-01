@@ -128,7 +128,8 @@ class Application:
 
         # Flag to avoid overlapping diffusion tasks.
         self.diffusion_running = False
-        self.diffusion_prompt = self.prompt_array['1'] # set default prompt
+        default_key = list(self.prompt_array.keys())[0]
+        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
         self.previous_prompt = None
         self.prepare_stream()
 
@@ -221,24 +222,17 @@ class Application:
                                                 None, self.hands, self.mp_drawing,
                                                 trigger_explosion_callback=self.trigger_explosion)
                                                        
-
-
-
-            
             if classified_gesture and classified_gesture != 'None':
                 self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
             else:
-                classified_gesture = '1'
-                self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+                default_classified_gesture = list(self.prompt_array.keys())[0]
+                self.diffusion_prompt = self.prompt_array.get(default_classified_gesture, self.diffusion_prompt)
 
-            if self.previous_prompt != self.diffusion_prompt:
+            if self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
+                # change prompt here
                 self.prepare_stream()
-            
-            self.previous_prompt = self.diffusion_prompt
+                self.previous_prompt = self.diffusion_prompt
                     
-            #  by array 
-            # self.diffusion_prompt = self.prompt_array[self.prompt_index]
-            
             # print("d prompt:", self.diffusion_prompt)
         
             # Start a diffusion process in the background if not already running.
