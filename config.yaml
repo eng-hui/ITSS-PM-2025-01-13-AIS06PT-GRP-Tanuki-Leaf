@@ -1,3 +1,7 @@
+ui:
+  window_title: "Tanuki Leaf"
+  window_geometry: "1000x700"
+
 camera:
   device: 0
   frame_width: 640
@@ -5,11 +9,12 @@ camera:
 
 diffusion:
   t_index_list: [16, 18, 20, 22]  # List of time indices for diffusion
-  cfg_type: "self"  # Options: none, full, self, initialize
+  cfg_type: "none"  # Options: none, full, self, initialize
   num_inference_steps: 24  # Number of inference steps
   base_model: "KBlueLeaf/kohaku-v2.1"
   lora: "lora/satorugojo-10.safetensors"
   encoder: "madebyollin/taesd"
+
 
 shape:
   default: "rectangle"
@@ -23,10 +28,8 @@ blur:
 gesture:
   file: "gesture_library.json"
   similarity_threshold: 0.85
+  style_change_gesture: "5"
 
-ui:
-  window_title: "Tanuki Leaf"
-  window_geometry: "1000x700"
 
 particles:
   count: 200
@@ -38,7 +41,6 @@ particles:
   life_max: 35
   gravity_min: 0.05
   gravity_max: 0.2
-
 
 prompts:
   "satoru": "Create an image of Gojo Satoru from Jujutsu Kaisen, featuring his signature white hair, blindfold or dark sunglasses, and his black high-collared outfit. Position him confidently, with a playful smile, against a dynamic background of blue energy and swirling cursed motifs, emphasizing his powerful and enigmatic presence, ultra-detailed, 8K"
