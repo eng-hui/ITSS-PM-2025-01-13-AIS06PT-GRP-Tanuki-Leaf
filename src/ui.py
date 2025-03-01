@@ -118,6 +118,10 @@ class Application:
             torch_dtype=torch.float16,
         )
         self.stream.load_lcm_lora()
+        
+        # load multiple lora, if trained properly, each lora should only has effect when the prompt contains keyword
+        self.stream.pipe.load_lora_weights("data/gojo.safetensor")
+
         self.stream.fuse_lora()
         self.stream.vae = AutoencoderTiny.from_pretrained("madebyollin/taesd").to(
             device=self.pipe.device, dtype=self.pipe.dtype)
@@ -128,6 +132,17 @@ class Application:
 
         # Flag to avoid overlapping diffusion tasks.
         self.diffusion_running = False
+
+
+    def prepare_stream(self):
+        pil_image = None # fake image
+        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=50)
+        # Warm up steps.
+        self.stream(pil_image)
+        for _ in range(4):
+            _ = self.stream(pil_image)
+        
+        #self.text_to_image_pipeline.unet.set_attn_processor(AttnProcessor2_0())
 
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
@@ -168,11 +183,7 @@ class Application:
         # Convert frame and prepare PIL image.
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(image_rgb).resize((512, 512))
-        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=50)
-        # Warm up steps.
-        self.stream(pil_image)
-        for _ in range(4):
-            _ = self.stream(pil_image)
+        self.prepare_stream()
         # Generate diffusion image.
         x_output = self.stream(pil_image)
         generated = postprocess_image(x_output, output_type="pil")[0]
@@ -190,6 +201,7 @@ class Application:
         self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
         self.diffusion_prompt = self.prompt_array[self.prompt_index]
         print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
+        self.prepare_stream()
 
     def show_frame(self):
         ret, frame = self.cap.read()
