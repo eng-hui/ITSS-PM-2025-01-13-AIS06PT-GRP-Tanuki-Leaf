@@ -3,7 +3,6 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from .config import config
 from .gesture import GestureLibrary
-from .shapes import ShapeManager
 from .mediapipe_utils import get_hands, get_drawing_utils, extract_hand_vectors
 from .detection import detect_objects
 from .gestureedit import GestureEditor  # Import GestureEditor
@@ -25,7 +24,7 @@ class Application:
         # Increase the window size.
         self.root = tk.Tk()
         self.root.title(self.config["ui"]["window_title"])
-        self.root.geometry("1400x800")  # Expanded window size
+        self.root.geometry("1400x800+50+50")  # Expanded window size
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         
@@ -33,17 +32,13 @@ class Application:
         self.prompt_array = self.config["prompts"]
         self.negative_prompt = self.config["negative_prompt"]
         self.diffusion_prompt = None
+        self.isChangingPrompt = False
 
         # Left frame for controls.
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
 
-        tk.Button(self.button_frame, text="Triangle",
-                  command=lambda: self.shape_manager.update_shape("triangle")).pack(pady=5, fill=tk.X)
-        tk.Button(self.button_frame, text="Rectangle",
-                  command=lambda: self.shape_manager.update_shape("rectangle")).pack(pady=5, fill=tk.X)
-        tk.Button(self.button_frame, text="Circle",
-                  command=lambda: self.shape_manager.update_shape("circle")).pack(pady=5, fill=tk.X)
+        
 
         tk.Label(self.button_frame, text="Blur Intensity").pack(pady=5)
         self.blur_slider = tk.Scale(self.button_frame, from_=1, to=self.config["blur"]["max_value"],
@@ -95,9 +90,6 @@ class Application:
         # Initialise gesture library.
         self.gesture_lib = GestureLibrary(self.config["gesture"]["file"],
                                           similarity_threshold=self.config["gesture"]["similarity_threshold"])
-
-        # Initialise shape manager.
-        self.shape_manager = ShapeManager(self.gesture_lib.library)
 
         # Initialise diffusion pipeline and StreamDiffusion.
         base_model_path = self.config["diffusion"]["base_model"]
@@ -194,11 +186,6 @@ class Application:
         self.diffusion_label.config(image=imgtk)
         self.diffusion_label.image = imgtk  # Keep a reference.
 
-    def trigger_explosion(self):
-        # self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
-        # self.diffusion_prompt = self.prompt_array[self.prompt_index]
-        # print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
-        print("placeholder")
     
     def show_frame(self):
         ret, frame = self.cap.read()
@@ -214,24 +201,13 @@ class Application:
            
             # Continue with object detection or other processing.
             if self.blur_intensity > 1:
-                processed_frame, classified_gesture = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                                self.blur_intensity, self.hands, self.mp_drawing,
-                                                trigger_explosion_callback=self.trigger_explosion)
+                processed_frame, classified_gesture = detect_objects(frame , self.gesture_lib,
+                                                self.blur_intensity, self.hands, self.mp_drawing)
             else:
-                processed_frame, classified_gesture = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                                None, self.hands, self.mp_drawing,
-                                                trigger_explosion_callback=self.trigger_explosion)
+                processed_frame, classified_gesture = detect_objects(frame, self.gesture_lib,
+                                                None, self.hands, self.mp_drawing)
                                                        
-            if classified_gesture and classified_gesture != 'None':
-                self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
-            else:
-                default_classified_gesture = list(self.prompt_array.keys())[0]
-                self.diffusion_prompt = self.prompt_array.get(default_classified_gesture, self.diffusion_prompt)
-
-            if self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
-                # change prompt here
-                self.prepare_stream()
-                self.previous_prompt = self.diffusion_prompt
+            self.handle_gesture_change(classified_gesture)
                     
             # print("d prompt:", self.diffusion_prompt)
         
@@ -252,8 +228,33 @@ class Application:
             # Update teleprompter text
             self.update_teleprompter_text(self.diffusion_prompt)
             
+        
             
         self.camera_label.after(30, self.show_frame)
+
+    def handle_gesture_change(self, classified_gesture):
+        if classified_gesture and classified_gesture != 'None':
+            self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+        # else:
+        #     default_classified_gesture = list(self.prompt_array.keys())[0]
+        #     self.diffusion_prompt = self.prompt_array.get(default_classified_gesture, self.diffusion_prompt)
+
+        style_change_gesture = self.config["gesture"]["style_change_gesture"]
+        if classified_gesture == style_change_gesture or self.isChangingPrompt:
+            self.camera_label.config(borderwidth=5, relief="solid", highlightbackground="red", highlightcolor="red", highlightthickness=5)
+            self.isChangingPrompt = True
+        else:
+            self.camera_label.config(borderwidth=0, relief="flat", highlightthickness=0)
+            self.isChangingPrompt = False
+
+
+        if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
+            print("changing prompt:", self.diffusion_prompt,classified_gesture)
+            # change prompt here
+            self.prepare_stream()
+            self.previous_prompt = self.diffusion_prompt
+            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+            self.isChangingPrompt = False
 
     def update_teleprompter_text(self, text):
         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)

@@ -5,7 +5,7 @@ from .explosion import create_explosion, update_particles
 from .mediapipe_utils import extract_hand_vectors
 from .utils import draw_text_with_outline
 
-def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_drawing, trigger_diffusion_callback=None, trigger_explosion_callback=None):
+def detect_objects(frame, gesture_lib, blur_intensity, hands, mp_drawing, trigger_diffusion_callback=None, trigger_explosion_callback=None):
     image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(image_rgb)
     h, w, _ = frame.shape
@@ -16,7 +16,6 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
         blurred_frame = cv2.GaussianBlur(frame, (blur_intensity, blur_intensity), 0)
 
     mask = np.zeros((h, w), dtype=np.uint8)
-    x0, y0 = shape_manager.position
     explosion_triggered = False
     classified_gesture = None  # Initialize classified_gesture
 
@@ -25,13 +24,9 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
 
     if results.multi_hand_landmarks and results.multi_handedness:
         for hlm, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-            collision = False
             for landmark in hlm.landmark:
                 kx, ky = int(landmark.x * w), int(landmark.y * h)
                 cv2.circle(mask, (kx, ky), 15, 255, -1)
-                if x0 <= kx <= x0 + shape_manager.size and y0 <= ky <= y0 + shape_manager.size:
-                    collision = True
-                    break
 
             vectors = extract_hand_vectors(hlm)
             side = "Left" if handedness.classification[0].label.lower() == "left" else "Right"
@@ -43,20 +38,8 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
                 right_hand_gesture = gesture
 
             # If the special trigger gesture is detected, invoke the diffusion callback
-            if collision and gesture == "66666" and trigger_diffusion_callback is not None:
+            if gesture == "66666" and trigger_diffusion_callback is not None:
                 trigger_diffusion_callback(frame)  # send raw frame for diffusion
-            # Existing explosion trigger using shape_manager’s target gesture.
-            if collision and gesture == shape_manager.target_gesture:
-                create_explosion(x0 + shape_manager.size // 2, y0 + shape_manager.size // 2)
-                shape_manager.move(w, h)
-                explosion_triggered = True
-                if trigger_explosion_callback:
-                    trigger_explosion_callback()  # Callback to update prompt_index in Application.
-                break
-
-    # Check for the specific gesture combination
-    # if left_hand_gesture == "naruto" and right_hand_gesture == "naruto":
-    #     classified_gesture = "naruto"
 
     # Check for the specific gesture combination for naruto
     if left_hand_gesture == "naruto" and right_hand_gesture == "naruto":
@@ -86,6 +69,5 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
                         (x_label, y_label + 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
-    shape_manager.draw(final_frame)
     update_particles(final_frame)
     return final_frame, classified_gesture
