@@ -29,31 +29,10 @@ class Application:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         
-        self.prompt_array = {
-            '1': "A brilliant mad scientist in a high-tech laboratory, glowing neon lights, futuristic devices, intricate blueprints, steampunk goggles, determined expression, cinematic lighting, ultra-detailed, 8K",
-            '2': "A hip hop rapper with gold chains, tattoos, sunglasses, baseball cap, baggy clothes, microphone, urban graffiti background, dynamic pose, cool attitude, 8K ultra-detailed",
-            '3': "A wise and elegant librarian in an ancient, candle-lit library, surrounded by towering bookshelves, ancient scrolls, reading an enchanted book, warm golden lighting, mystical atmosphere, 8K ultra-detailed",
-            'satoru':"Create an image of Gojo Satoru from Jujutsu Kaisen, featuring his signature white hair, blindfold or dark sunglasses, and his black high-collared outfit. Position him confidently, with a playful smile, against a dynamic background of blue energy and swirling cursed motifs, emphasizing his powerful and enigmatic presence, ultra-detailed, 8K",
-            # 'satoru':"Create an image of Gojo Satoru, the powerful and enigmatic sorcerer from 'Jujutsu Kaisen.' Capture his iconic white hair, blindfold or sunglasses, and his confident, playful demeanor. He should be wearing his black high-collared outfit, standing against a backdrop that highlights his boundless energy and the mystic aura surrounding him, with hints of blue energy and swirling cursed energy motifs, ultra-detailed, 8K",
-            '5': "Doraemon is a robotic cat from the future, with a round face, blue fur, no ears, and a pocket on his belly. He is often seen with his friend Nobita, a young Asian boy, ultra-detailed, 8K",
-            'naruto':"Create an image of Naruto Uzumaki, the beloved ninja from 'Naruto.' Show him with his spiky blond hair, orange jumpsuit, and headband, striking a dynamic pose that reflects his energetic and determined personality. Place him in a vibrant, action-packed setting with swirling chakra energy and iconic ninja symbols, capturing the essence of his adventurous spirit and ninja skills, ultra-detailed, 8K",
-            'luffy': "An image of Monkey D. Luffy from 'One Piece.' Depict him with his signature straw hat, red vest, and wide grin, standing confidently with his fists clenched. The background should feature the open sea or a battle scene, emphasizing his adventurous spirit and determination, ultra-detailed, 8K",
-            'goku': "Picture of Goku from 'Dragon Ball Z.' Show him in his iconic orange gi, standing in a powerful pose with golden Super Saiyan hair and glowing energy surrounding him. The background should be an intense battle scene with energy blasts and dust clouds, ultra-detailed, 8K",
-            'edward': "Drawing of Edward Elric from 'Fullmetal Alchemist.' Show him with his signature red coat, automail arm, and alchemy energy sparking from his hands. The background should have a mysterious transmutation circle glowing with blue light, ultra-detailed, 8K",    
-            'rem': "Portrayal of Rem from 'Re:Zero.' Show her with her short blue hair, maid outfit, and a soft but determined expression. The background should be a fantasy setting with a hint of magical energy surrounding her, ultra-detailed, 8K",
-    
-        }
-        
-        # Default values
+        # Load prompts and negative prompts from config
+        self.prompt_array = self.config["prompts"]
+        self.negative_prompt = self.config["negative_prompt"]
         self.diffusion_prompt = None
-
-        self.negative_prompt = (
-            "low quality, bad quality, blurry, distorted, malformed hands, unnatural anatomy, overexposed, "
-            "mutated faces, extra limbs, low resolution, poorly drawn, ugly, deformed, watermark, artifacts, "
-            "low contrast, washed out colors, pixelated, grainy, noisy, out of focus, poorly lit, "
-            "overexposed highlights, underexposed shadows, incorrect proportions, awkward poses, "
-            "unrealistic textures, flat lighting, lack of detail, boring composition, cluttered background"
-        )
 
         # Left frame for controls.
         self.button_frame = tk.Frame(self.root)
@@ -121,21 +100,26 @@ class Application:
         self.shape_manager = ShapeManager(self.gesture_lib.library)
 
         # Initialise diffusion pipeline and StreamDiffusion.
-        self.pipe = StableDiffusionPipeline.from_pretrained("KBlueLeaf/kohaku-v2.1").to(
+        base_model_path = self.config["diffusion"]["base_model"]
+        self.pipe = StableDiffusionPipeline.from_pretrained(base_model_path).to(
             device=torch.device("cuda"),
             dtype=torch.float16,
         )
         self.stream = StreamDiffusion(
             self.pipe,
-            t_index_list=[16,18,20,22],
+            # t_index_list=[16,18,20,22],
+            t_index_list = self.config["diffusion"]["t_index_list"],
             torch_dtype=torch.float16,
+            cfg_type = self.config["diffusion"]["cfg_type"] 
         )
 
+        lora_path = self.config["diffusion"]["lora"]
+        encoder_path = self.config["diffusion"]["encoder"]
         self.stream.load_lcm_lora()
-        self.stream.pipe.load_lora_weights("lora/satorugojo-10.safetensors")
+        self.stream.pipe.load_lora_weights(lora_path)
         self.stream.fuse_lora()
-        self.stream.enable_similar_image_filter()
-        self.stream.vae = AutoencoderTiny.from_pretrained("madebyollin/taesd").to(
+        # self.stream.enable_similar_image_filter()
+        self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
             device=self.pipe.device, dtype=self.pipe.dtype)
         self.pipe.enable_xformers_memory_efficient_attention()
 
@@ -178,7 +162,7 @@ class Application:
 
     def prepare_stream(self):
             pil_image = None # fake image
-            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=25)
+            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=24)
             # Warm up steps.
             ret, frame = self.cap.read()
             if not ret:
@@ -187,7 +171,7 @@ class Application:
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             pil_image = Image.fromarray(image_rgb).resize((512, 512))
             self.stream(pil_image)
-            for _ in range(2):
+            for _ in range(4):
                 _ = self.stream(pil_image)
 
     def process_diffusion(self, frame):
