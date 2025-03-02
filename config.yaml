@@ -3,6 +3,14 @@ camera:
   frame_width: 640
   frame_height: 480
 
+diffusion:
+  t_index_list: [16, 18, 20, 22]  # List of time indices for diffusion
+  cfg_type: "self"  # Options: none, full, self, initialize
+  num_inference_steps: 24  # Number of inference steps
+  base_model: "KBlueLeaf/kohaku-v2.1"
+  lora: "lora/satorugojo-10.safetensors"
+  encoder: "madebyollin/taesd"
+
 shape:
   default: "rectangle"
   default_position: [100, 100]
@@ -17,7 +25,7 @@ gesture:
   similarity_threshold: 0.85
 
 ui:
-  window_title: "NUS ISS Posture Keypoints Recognition Demo"
+  window_title: "Tanuki Leaf"
   window_geometry: "1000x700"
 
 particles:
@@ -30,3 +38,14 @@ particles:
   life_max: 35
   gravity_min: 0.05
   gravity_max: 0.2
+
+
+prompts:
+  "satoru": "Create an image of Gojo Satoru from Jujutsu Kaisen, featuring his signature white hair, blindfold or dark sunglasses, and his black high-collared outfit. Position him confidently, with a playful smile, against a dynamic background of blue energy and swirling cursed motifs, emphasizing his powerful and enigmatic presence, ultra-detailed, 8K"
+  "naruto": "Create an image of Naruto Uzumaki, the beloved ninja from 'Naruto.' Show him with his spiky blond hair, orange jumpsuit, and headband, striking a dynamic pose that reflects his energetic and determined personality. Place him in a vibrant, action-packed setting with swirling chakra energy and iconic ninja symbols, capturing the essence of his adventurous spirit and ninja skills, ultra-detailed, 8K"
+  "luffy": "An image of Monkey D. Luffy from 'One Piece.' Depict him with his signature straw hat, red vest, and wide grin, standing confidently with his fists clenched. The background should feature the open sea or a battle scene, emphasizing his adventurous spirit and determination, ultra-detailed, 8K"
+  "goku": "Picture of Goku from 'Dragon Ball Z.' Show him in his iconic orange gi, standing in a powerful pose with golden Super Saiyan hair and glowing energy surrounding him. The background should be an intense battle scene with energy blasts and dust clouds, ultra-detailed, 8K"
+  "edward": "Drawing of Edward Elric from 'Fullmetal Alchemist.' Show him with his signature red coat, automail arm, and alchemy energy sparking from his hands. The background should have a mysterious transmutation circle glowing with blue light, ultra-detailed, 8K"
+  "rem": "Portrayal of Rem from 'Re:Zero.' Show her with her short blue hair, maid outfit, and a soft but determined expression. The background should be a fantasy setting with a hint of magical energy surrounding her, ultra-detailed, 8K"
+
+negative_prompt: "low quality, bad quality, blurry, distorted, malformed hands, unnatural anatomy, overexposed, mutated faces, extra limbs, low resolution, poorly drawn, ugly, deformed, watermark, artifacts, low contrast, washed out colors, pixelated, grainy, noisy, out of focus, poorly lit, overexposed highlights, underexposed shadows, incorrect proportions, awkward poses, unrealistic textures, flat lighting, lack of detail, boring composition, cluttered background"
