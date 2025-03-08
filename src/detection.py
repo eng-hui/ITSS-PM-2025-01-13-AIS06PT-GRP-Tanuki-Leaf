@@ -21,6 +21,10 @@ def detect_objects(frame, gesture_lib, blur_intensity, hands, mp_drawing, trigge
 
     left_hand_gesture = None
     right_hand_gesture = None
+    classified_gesture = None  # Initialize classified_gesture
+
+    left_hand_gesture = None
+    right_hand_gesture = None
 
     if results.multi_hand_landmarks and results.multi_handedness:
         for hlm, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
@@ -30,6 +34,13 @@ def detect_objects(frame, gesture_lib, blur_intensity, hands, mp_drawing, trigge
 
             vectors = extract_hand_vectors(hlm)
             side = "Left" if handedness.classification[0].label.lower() == "left" else "Right"
+            gesture = gesture_lib.classify(vectors, side)
+            
+            if side == "Left":
+                left_hand_gesture = gesture
+            else:
+                right_hand_gesture = gesture
+
             gesture = gesture_lib.classify(vectors, side)
             
             if side == "Left":
@@ -70,4 +81,5 @@ def detect_objects(frame, gesture_lib, blur_intensity, hands, mp_drawing, trigge
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
     update_particles(final_frame)
+    return final_frame, classified_gesture
     return final_frame, classified_gesture

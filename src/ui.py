@@ -17,6 +17,7 @@ def launch_gesture_edit():
     editor = GestureEditor()
     editor.mainloop()
     
+    
 class Application:
     def __init__(self):
         self.config = config
@@ -78,6 +79,14 @@ class Application:
             self.teleprompter_canvas.winfo_width(), 15, text="", fill="white", anchor="w"
         )
         
+
+        # Teleprompter banner
+        self.teleprompter_canvas = tk.Canvas(self.video_frame, height=30, bg="black")
+        self.teleprompter_canvas.grid(row=1, column=0, sticky="ew")
+        self.teleprompter_text = self.teleprompter_canvas.create_text(
+            self.teleprompter_canvas.winfo_width(), 15, text="", fill="white", anchor="w"
+        )
+        
         # Initialise camera.
         self.cap = cv2.VideoCapture(self.config["camera"]["device"])
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config["camera"]["frame_width"])
@@ -94,6 +103,8 @@ class Application:
         # Initialise diffusion pipeline and StreamDiffusion.
         base_model_path = self.config["diffusion"]["base_model"]
         self.pipe = StableDiffusionPipeline.from_pretrained(base_model_path).to(
+        base_model_path = self.config["diffusion"]["base_model"]
+        self.pipe = StableDiffusionPipeline.from_pretrained(base_model_path).to(
             device=torch.device("cuda"),
             dtype=torch.float16,
         )
@@ -101,15 +112,24 @@ class Application:
             self.pipe,
             # t_index_list=[16,18,20,22],
             t_index_list = self.config["diffusion"]["t_index_list"],
+            # t_index_list=[16,18,20,22],
+            t_index_list = self.config["diffusion"]["t_index_list"],
             torch_dtype=torch.float16,
+            cfg_type = self.config["diffusion"]["cfg_type"] 
             cfg_type = self.config["diffusion"]["cfg_type"] 
         )
 
         lora_path = self.config["diffusion"]["lora"]
         encoder_path = self.config["diffusion"]["encoder"]
+
+        lora_path = self.config["diffusion"]["lora"]
+        encoder_path = self.config["diffusion"]["encoder"]
         self.stream.load_lcm_lora()
         self.stream.pipe.load_lora_weights(lora_path)
+        self.stream.pipe.load_lora_weights(lora_path)
         self.stream.fuse_lora()
+        # self.stream.enable_similar_image_filter()
+        self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
         # self.stream.enable_similar_image_filter()
         self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
             device=self.pipe.device, dtype=self.pipe.dtype)
@@ -120,6 +140,10 @@ class Application:
 
         # Flag to avoid overlapping diffusion tasks.
         self.diffusion_running = False
+        default_key = list(self.prompt_array.keys())[0]
+        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
+        self.previous_prompt = None
+        self.prepare_stream()
         default_key = list(self.prompt_array.keys())[0]
         self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
         self.previous_prompt = None
@@ -166,6 +190,19 @@ class Application:
             self.stream(pil_image)
             for _ in range(4):
                 _ = self.stream(pil_image)
+    def prepare_stream(self):
+            pil_image = None # fake image
+            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=24)
+            # Warm up steps.
+            ret, frame = self.cap.read()
+            if not ret:
+                print("Unable to read from camera.")
+                return
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb).resize((512, 512))
+            self.stream(pil_image)
+            for _ in range(4):
+                _ = self.stream(pil_image)
 
     def process_diffusion(self, frame):
         # Set flag so no new diffusion is started while running.
@@ -194,9 +231,17 @@ class Application:
             print("Failed to read from camera.")
             return
         
+        # Check if the frame is valid
+        if not ret:
+            print("Failed to read from camera.")
+            return
+        
         if ret:
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
+            
+           
+            # Continue with object detection or other processing.
             
            
             # Continue with object detection or other processing.
@@ -214,8 +259,11 @@ class Application:
             # Start a diffusion process in the background if not already running.
             if not self.diffusion_running:
                 # print("Start diffusion check")
+                # print("Start diffusion check")
                 threading.Thread(target=self.process_diffusion, args=(frame,), daemon=True).start()
             
+            
+            # Resize frame to fit camera label.
             
             # Resize frame to fit camera label.
             frame_resized = cv2.resize(processed_frame, (self.camera_label.winfo_width(), self.camera_label.winfo_height()))
@@ -271,6 +319,7 @@ class Application:
 
     def run(self):
         self.root.update_idletasks()
+        self.show_frame()        
         self.show_frame()        
         self.root.mainloop()
 
