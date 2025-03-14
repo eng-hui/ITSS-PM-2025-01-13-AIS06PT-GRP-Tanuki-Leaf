@@ -30,3 +30,11 @@ particles:
   life_max: 35
   gravity_min: 0.05
   gravity_max: 0.2
+
+model:
+  model_mlp: "hand_gesture_mlp.joblib" 
+  model_rf: "hand_gesture_rf.joblib"
+  model_svm: "hand_gesture_svm.joblib"
+  model_knn: "hand_gesture_knn.joblib"
+  model_dt: "hand_gesture_dt.joblib"
+  model_nn: "hand_gesture_nn.pth"

@@ -12,6 +12,7 @@ from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
+from tkinter import ttk
 
 def launch_gesture_edit():
     # Launch GestureEditor
@@ -21,6 +22,7 @@ def launch_gesture_edit():
 class Application:
     def __init__(self):
         self.config = config
+        self.auto_capture_running = False  # New attribute for auto gesture capture
 
         # Increase the window size.
         self.root = tk.Tk()
@@ -74,6 +76,18 @@ class Application:
             .pack(pady=5, fill=tk.X)
         tk.Button(self.button_frame, text="Launch GestureEdit", command=launch_gesture_edit) \
             .pack(pady=5, fill=tk.X)
+        
+        # NEW: Dropdown to select gesture recognition model.
+        tk.Label(self.button_frame, text="Select Recognition Model").pack(pady=5)
+        model_options = ["MLP", "Random Forest", "Decision Tree", "SVM", "KNN", "NN"]
+        self.model_var = tk.StringVar(value=model_options[0])
+        self.model_combo = ttk.Combobox(self.button_frame, textvariable=self.model_var, values=model_options, state="readonly")
+        self.model_combo.pack(pady=5, fill=tk.X)
+
+        tk.Button(self.button_frame, text="Start Auto Capture",
+                  command=self.start_auto_capture).pack(pady=5, fill=tk.X)
+        tk.Button(self.button_frame, text="Stop Auto Capture",
+                  command=self.stop_auto_capture).pack(pady=5, fill=tk.X)
 
         # New diffusion label in the left panel with fixed size.
         self.diffusion_label = tk.Label(self.button_frame)
@@ -121,7 +135,11 @@ class Application:
         self.stream.fuse_lora()
         self.stream.vae = AutoencoderTiny.from_pretrained("madebyollin/taesd").to(
             device=self.pipe.device, dtype=self.pipe.dtype)
-        self.pipe.enable_xformers_memory_efficient_attention()
+        # self.pipe.enable_xformers_memory_efficient_attention()
+        try:
+            self.pipe.enable_xformers_memory_efficient_attention()
+        except Exception as e:
+            print("Warning: Could not enable xformers memory efficient attention:", e)
 
         # Set initial blur intensity.
         self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
@@ -129,35 +147,54 @@ class Application:
         # Flag to avoid overlapping diffusion tasks.
         self.diffusion_running = False
 
+    def start_auto_capture(self):
+        # Start the auto capture loop for gesture capture
+        self.auto_capture_running = True
+        self._auto_capture_gesture()
+        print("Auto capture (gesture) started from UI.")
+
+    def _auto_capture_gesture(self):
+        if not self.auto_capture_running:
+            return
+        # Trigger the capture gesture action (which runs in a separate thread)
+        self.capture_gesture_action()
+        # Reschedule this function after 100 ms (0.1 second)
+        self.root.after(100, self._auto_capture_gesture)
+
+    def stop_auto_capture(self):
+        self.auto_capture_running = False
+        print("Auto capture (gesture) stopped from UI.")
+
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
 
     def capture_gesture_action(self):
-        gesture_name = self.gesture_entry.get().strip()
-        if not gesture_name:
-            print("No gesture name entered.")
-            return
+        threading.Thread(target=self._capture_gesture_worker, daemon=True).start()
 
+    def _capture_gesture_worker(self):
+        gesture_name = self.gesture_entry.get().strip()
+        
+        if not gesture_name:
+            print("No gesture name provided.")
         ret, frame = self.cap.read()
         if not ret:
             print("Unable to read from camera.")
             return
-
         frame = cv2.flip(frame, 1)
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(image_rgb)
         if not results.multi_hand_landmarks or not results.multi_handedness:
             print("No hand detected.")
             return
-
         hand_landmarks = results.multi_hand_landmarks[0]
         hand_label = results.multi_handedness[0].classification[0].label
         vectors = extract_hand_vectors(hand_landmarks)
         side = "Left" if hand_label.lower() == "left" else "Right"
         self.gesture_lib.add_gesture(side, gesture_name, vectors)
         print(f"Captured gesture '{gesture_name}' for {side} hand.")
+        self.root.after(0, self._update_diffusion_prompt)
 
-        # Update to the next prompt in the array regardless of the gesture name.
+    def _update_diffusion_prompt(self):
         self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
         self.diffusion_prompt = self.prompt_array[self.prompt_index]
         print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
