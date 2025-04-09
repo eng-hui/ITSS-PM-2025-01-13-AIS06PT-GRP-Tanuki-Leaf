@@ -58,3 +58,31 @@ class GestureLibrary:
         dot = np.dot(v1, v2)
         norm = (np.linalg.norm(v1) * np.linalg.norm(v2))
         return dot / norm if norm else 0
+    
+    def get_all_gestures(self):
+        """Get all gestures from both hands combined into one dictionary."""
+        all_gestures = {}
+        # Add left hand gestures
+        for gesture_name, samples in self.library.get("Left", {}).items():
+            all_gestures[gesture_name] = {"side": "Left", "samples": samples}
+        # Add right hand gestures
+        for gesture_name, samples in self.library.get("Right", {}).items():
+            all_gestures[gesture_name] = {"side": "Right", "samples": samples}
+        return all_gestures
+    
+    def get_gesture_vector(self, gesture_name, hand_side=None):
+        """
+        Get the first sample vector for a specific gesture.
+        If hand_side is None, it will search both sides.
+        """
+        if hand_side:
+            if gesture_name in self.library.get(hand_side, {}):
+                samples = self.library[hand_side][gesture_name]
+                return samples[0] if samples else None
+        else:
+            # Check both sides
+            for side in ["Left", "Right"]:
+                if gesture_name in self.library.get(side, {}):
+                    samples = self.library[side][gesture_name]
+                    return samples[0] if samples else None
+        return None
