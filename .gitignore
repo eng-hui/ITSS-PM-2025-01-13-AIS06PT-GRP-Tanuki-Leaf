@@ -1,6 +1,4 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
-*.safetensors
-satoru.safetensors
-satorugojo-10.safetensors
+lora/satorugojo-10.safetensors
