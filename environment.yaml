@@ -20,5 +20,7 @@ dependencies:
     - torchaudio
     - streamdiffusion[tensorrt]
     - huggingface_hub==0.25.2
+    - pyaudio
+    - SpeechRecognition
 variables:
   KMP_DUPLICATE_LIB_OK: "TRUE"
