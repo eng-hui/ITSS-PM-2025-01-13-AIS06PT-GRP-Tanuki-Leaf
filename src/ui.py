@@ -62,7 +62,7 @@ class Application:
         self.voice_button = tk.Button(self.button_frame, text="Voice Recognition", command=self.voice_recognition_action)
         self.voice_button.pack(pady=5, fill=tk.X)
                 
-        # Add voice result label
+        # Add voice result label for display
         self.voice_result_label = tk.Label(self.button_frame, text="", fg="blue", wraplength=200)
         self.voice_result_label.pack(pady=5, fill=tk.X)
 
