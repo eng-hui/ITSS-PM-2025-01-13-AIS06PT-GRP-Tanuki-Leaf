@@ -9,9 +9,9 @@ camera:
   frame_height: 480
 
 diffusion:
-  t_index_list: [16, 18, 20, 22]  # List of time indices for diffusion
+  t_index_list: [16, 18, 24, 28]  # List of time indices for diffusion
   cfg_type: "none"  # Options: none, full, self, initialize
-  num_inference_steps: 24  # Number of inference steps
+  num_inference_steps: 30  # Number of inference steps
   base_model: "KBlueLeaf/kohaku-v2.1"
   lora: "lora/satorugojo-10.safetensors"
   encoder: "madebyollin/taesd"

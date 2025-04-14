@@ -277,7 +277,8 @@ class Application:
 
     def prepare_stream(self):
             pil_image = None # fake image
-            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=24)
+            num_inference_steps = self.config["diffusion"]["num_inference_steps"]
+            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
             # Warm up steps.
             ret, frame = self.cap.read()
             if not ret:
