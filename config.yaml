@@ -28,7 +28,10 @@ blur:
 gesture:
   file: "gesture_library.json"
   similarity_threshold: 0.85
-  style_change_gesture: "5"
+  style_change_gesture: "1"
+  use_model: true  # set to true to use ml model
+  model_path: "reg_model/hand_gesture_mlp.joblib"
+  label_classes: ["1", "2", "naruto", "sakura"]
 
 
 particles:

@@ -22,5 +22,6 @@ dependencies:
     - huggingface_hub==0.25.2
     - pyaudio
     - SpeechRecognition
+    - scikit-learn==1.0.1
 variables:
   KMP_DUPLICATE_LIB_OK: "TRUE"
