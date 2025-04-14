@@ -150,11 +150,14 @@ class Application:
         )
 
         lora_path = self.config["diffusion"]["lora"]
+        use_lora = self.config["diffusion"]["use_lora"]
         encoder_path = self.config["diffusion"]["encoder"]
         self.stream.load_lcm_lora()
-        self.stream.pipe.load_lora_weights(lora_path)
+        if use_lora:
+            self.stream.pipe.load_lora_weights(lora_path)
         self.stream.fuse_lora()
-        # self.stream.enable_similar_image_filter()
+
+        self.stream.enable_similar_image_filter()
         self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
             device=self.pipe.device, dtype=self.pipe.dtype)
         self.pipe.enable_xformers_memory_efficient_attention()

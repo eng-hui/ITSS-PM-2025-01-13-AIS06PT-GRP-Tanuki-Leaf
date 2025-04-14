@@ -9,12 +9,13 @@ camera:
   frame_height: 480
 
 diffusion:
-  t_index_list: [16, 18, 24, 28]  # List of time indices for diffusion
+  t_index_list: [16, 20, 24, 28] # List of time indices for diffusion
   cfg_type: "none"  # Options: none, full, self, initialize
   num_inference_steps: 30  # Number of inference steps
   base_model: "KBlueLeaf/kohaku-v2.1"
-  lora: "lora/satoru.safetensors"
   encoder: "madebyollin/taesd"
+  use_lora: true
+  lora: "lora/satoru.safetensors"
 
 
 shape:
@@ -30,7 +31,7 @@ gesture:
   file: "gesture_library.json"
   similarity_threshold: 0.85
   style_change_gesture: "1"
-  use_model: true  # set to true to use ml model
+  use_model: false  # set to true to use ml model
   model_path: "reg_model/hand_gesture_mlp.joblib"
   label_classes: ["1", "2", "naruto", "sakura"]
 
