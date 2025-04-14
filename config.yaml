@@ -1,6 +1,7 @@
 ui:
   window_title: "Tanuki Leaf"
   window_geometry: "1000x700"
+  image_icon: "image/logo.png"
 
 camera:
   device: 0

@@ -35,15 +35,15 @@ def detect_objects(frame, gesture_lib, blur_intensity, hands, mp_drawing, trigge
             vectors = extract_hand_vectors(hlm)
 
             if use_reg_model:
-                start_time = time.time()
+                # start_time = time.time()
                 gesture = reg_model.classify(vectors)
-                end_time = time.time()
-                print(f"Model Classification time: {end_time - start_time:.4f} seconds")
+                # end_time = time.time()
+                # print(f"Model Classification time: {end_time - start_time:.4f} seconds")
             else:
-                start_time = time.time()
+                # start_time = time.time()
                 gesture = gesture_lib.classify(vectors, side)
-                end_time = time.time()
-                print(f"Cosine Similarity time: {end_time - start_time:.4f} seconds")
+                # end_time = time.time()
+                # print(f"Cosine Similarity time: {end_time - start_time:.4f} seconds")
 
             # Save everything for later use
             hand_info.append({

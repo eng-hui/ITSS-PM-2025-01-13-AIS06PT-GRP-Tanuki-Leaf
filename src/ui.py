@@ -29,7 +29,7 @@ class Application:
         self.root.geometry("1400x800+50+50")  # Expanded window size
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
-        
+
         # Load model
         self.use_reg_model = self.config["gesture"]["use_model"]
         self.reg_model = None
@@ -53,13 +53,36 @@ class Application:
         self.recognizer = sr.Recognizer()
         self.listening = False
 
-        tk.Label(self.button_frame, text="Blur Intensity").pack(pady=5)
+       # Load and display the image in the top-left corner
+        image_path = self.config["ui"]["image_icon"] 
+        try:
+            img = Image.open(image_path)
+            img_resized = img.resize((250, 250))  
+            self.logo_image = ImageTk.PhotoImage(img_resized)
+
+            self.image_label = tk.Label(
+                self.button_frame,
+                image=self.logo_image,
+                bg="white",         # White background
+                borderwidth=2,      # Border thickness
+                relief="solid"      # Border style (solid line)
+            )
+            self.image_label.pack(pady=5, anchor='center')  # Centre it in the frame
+        except Exception as e:
+            print(f"Error loading image: {e}")
+
+
+        tk.Label(self.button_frame, text="Blur Intensity",bg="black",fg="white",highlightbackground="black",
+    highlightcolor="black").pack(pady=5, fill=tk.X)
         self.blur_slider = tk.Scale(self.button_frame, from_=1, to=self.config["blur"]["max_value"],
                                     orient=tk.HORIZONTAL, command=self.update_blur)
         self.blur_slider.set(self.config["blur"]["default_slider"])
         self.blur_slider.pack(fill=tk.X)
 
-        tk.Label(self.button_frame, text="Gesture Name").pack(pady=5)
+        tk.Label(self.button_frame, text="Gesture Name",bg="darkorange",fg="white",highlightbackground="black",
+    highlightcolor="black").pack(pady=5, fill=tk.X)
+
+
         self.gesture_entry = tk.Entry(self.button_frame)
         self.gesture_entry.pack(pady=5, fill=tk.X)
 
