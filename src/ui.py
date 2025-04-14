@@ -11,6 +11,7 @@ from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
+import speech_recognition as sr
 
 def launch_gesture_edit():
     # Launch GestureEditor
@@ -38,7 +39,9 @@ class Application:
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
 
-        
+        # Initialize speech recognition
+        self.recognizer = sr.Recognizer()
+        self.listening = False
 
         tk.Label(self.button_frame, text="Blur Intensity").pack(pady=5)
         self.blur_slider = tk.Scale(self.button_frame, from_=1, to=self.config["blur"]["max_value"],
@@ -54,6 +57,14 @@ class Application:
             .pack(pady=5, fill=tk.X)
         tk.Button(self.button_frame, text="Launch GestureEdit", command=launch_gesture_edit) \
             .pack(pady=5, fill=tk.X)
+
+        # Add Voice button
+        self.voice_button = tk.Button(self.button_frame, text="Voice Recognition", command=self.voice_recognition_action)
+        self.voice_button.pack(pady=5, fill=tk.X)
+                
+        # Add voice result label for displaying
+        self.voice_result_label = tk.Label(self.button_frame, text="", fg="blue", wraplength=200)
+        self.voice_result_label.pack(pady=5, fill=tk.X)
 
         # New diffusion label in the left panel with fixed size.
         self.diffusion_label = tk.Label(self.button_frame)
@@ -124,6 +135,84 @@ class Application:
         self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
         self.previous_prompt = None
         self.prepare_stream()
+        
+    def voice_recognition_action(self):
+        """Start voice recognition in a separate thread to avoid blocking UI"""
+        if self.listening:
+            # If already listening, do nothing
+            return
+
+        # Update button appearance to indicate listening
+        self.voice_button.config(text="Listening...", bg="red")
+        self.listening = True
+        
+        # Start listening in a thread
+        threading.Thread(target=self.listen_for_gesture, daemon=True).start()
+    
+    def listen_for_gesture(self):
+        """Listen for voice commands and match with gestures"""
+        try:
+            with sr.Microphone() as source:
+                print("Listening for a gesture name...")
+                # Adjust for ambient noise
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                # Listen for audio input
+                audio = self.recognizer.listen(source, timeout=5)
+                
+            try:
+                # Use Google's speech recognition service
+                text = self.recognizer.recognize_google(audio).lower()
+                print(f"Recognized: {text}")
+                
+                # Match recognized text with gestures
+                found_match = False
+                # Get the available gestures using the get_gestures method 
+                # or access the correct attribute that contains gesture names
+                gesture_names = list(self.gesture_lib.get_all_gestures().keys())
+                
+                for gesture_name in gesture_names:
+                    # Simple check if the recognized text contains the gesture name
+                    if gesture_name.lower() in text:
+                        print(f"Matched gesture: {gesture_name}")
+                        # Update result label with matched gesture
+                        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
+                            text=f"Matched: {g}", fg="green"))
+                        # Flag that this is a voice-activated change
+                        self.voice_activated = True
+                        # Update to this gesture in the main thread
+                        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
+                        found_match = True
+                        break
+                
+                if not found_match:
+                    print(f"No matching gesture found for: {text}")
+                    self.root.after(0, lambda: self.voice_result_label.config(
+                        text="No matching gesture found", fg="orange"))
+                    
+            except sr.UnknownValueError:
+                print("Could not understand audio")
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text="Could not understand audio", fg="red"))
+            
+            except sr.RequestError as error:
+                print(f"Could not request results; {error}")
+                # Store error message in a local variable before using in lambda
+                error_msg = str(error)
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text=f"Request error: {error_msg[:30]}", fg="red"))
+                    
+        except Exception as error:
+            print(f"Error in voice recognition: {error}")
+            # Store error message in a local variable before using in lambda
+            error_msg = str(error)
+            self.root.after(0, lambda: self.voice_result_label.config(
+                text=f"Error: {error_msg[:30]}...", fg="red"))
+        
+        finally:
+            # Reset button appearance
+            self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition", bg="SystemButtonFace"))
+            self.listening = False
+        
 
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
@@ -235,9 +324,7 @@ class Application:
     def handle_gesture_change(self, classified_gesture):
         if classified_gesture and classified_gesture != 'None':
             self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
-        # else:
-        #     default_classified_gesture = list(self.prompt_array.keys())[0]
-        #     self.diffusion_prompt = self.prompt_array.get(default_classified_gesture, self.diffusion_prompt)
+
 
         style_change_gesture = self.config["gesture"]["style_change_gesture"]
         if classified_gesture == style_change_gesture or self.isChangingPrompt:
@@ -248,6 +335,39 @@ class Application:
             self.isChangingPrompt = False
 
 
+        # For voice-activated changes, we need to handle them differently
+        voice_activated = getattr(self, 'voice_activated', False)
+
+        # If it's a voice command or we're in changing prompt mode and the prompt changed
+        if (voice_activated and self.previous_prompt != self.diffusion_prompt) or \
+        (self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None'):
+            print("changing prompt:", self.diffusion_prompt, classified_gesture)
+            
+            # Avoid conflicts with diffusion processing
+            if not self.diffusion_running:
+                # Run prepare_stream in a separate thread
+                threading.Thread(target=self._prepare_stream_safe, daemon=True).start()
+                
+            self.previous_prompt = self.diffusion_prompt
+            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+            
+            # Reset flags
+            if voice_activated:
+                self.voice_activated = False
+            else:
+                self.isChangingPrompt = False
+
+    def _prepare_stream_safe(self):
+        """Thread-safe wrapper for prepare_stream"""
+        # Set flag so diffusion knows we're preparing
+        self.diffusion_running = True
+        try:
+            self.prepare_stream()
+        finally:
+            self.diffusion_running = False
+        
+        
+
         if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
             print("changing prompt:", self.diffusion_prompt,classified_gesture)
             # change prompt here
@@ -255,6 +375,7 @@ class Application:
             self.previous_prompt = self.diffusion_prompt
             self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
             self.isChangingPrompt = False
+
 
     def update_teleprompter_text(self, text):
         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
