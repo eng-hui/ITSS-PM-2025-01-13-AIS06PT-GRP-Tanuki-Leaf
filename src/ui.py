@@ -6,6 +6,7 @@ from .gesture import GestureLibrary
 from .mediapipe_utils import get_hands, get_drawing_utils, extract_hand_vectors
 from .detection import detect_objects
 from .gestureedit import GestureEditor  # Import GestureEditor
+from .ml_gesture_recognition import MLGestureRecognition
 import torch
 from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
@@ -29,6 +30,15 @@ class Application:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         
+        # Load model
+        self.use_reg_model = self.config["gesture"]["use_model"]
+        self.reg_model = None
+        self.reg_classes = []
+        if self.use_reg_model:
+            reg_classes = self.config["gesture"]["label_classes"]
+            self.reg_model = MLGestureRecognition(self.config["gesture"]["model_path"],classes=reg_classes)
+
+
         # Load prompts and negative prompts from config
         self.prompt_array = self.config["prompts"]
         self.negative_prompt = self.config["negative_prompt"]
@@ -291,10 +301,10 @@ class Application:
             # Continue with object detection or other processing.
             if self.blur_intensity > 1:
                 processed_frame, classified_gesture = detect_objects(frame , self.gesture_lib,
-                                                self.blur_intensity, self.hands, self.mp_drawing)
+                                                self.blur_intensity, self.hands, self.mp_drawing,use_reg_model=self.use_reg_model,reg_model=self.reg_model)
             else:
                 processed_frame, classified_gesture = detect_objects(frame, self.gesture_lib,
-                                                None, self.hands, self.mp_drawing)
+                                                None, self.hands, self.mp_drawing,use_reg_model=self.use_reg_model,reg_model=self.reg_model)
                                                        
             self.handle_gesture_change(classified_gesture)
                     
