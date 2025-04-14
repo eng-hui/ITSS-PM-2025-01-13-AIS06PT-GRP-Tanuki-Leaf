@@ -13,7 +13,7 @@ diffusion:
   cfg_type: "none"  # Options: none, full, self, initialize
   num_inference_steps: 30  # Number of inference steps
   base_model: "KBlueLeaf/kohaku-v2.1"
-  lora: "lora/satorugojo-10.safetensors"
+  lora: "lora/satorugojo.safetensors"
   encoder: "madebyollin/taesd"
 
 
