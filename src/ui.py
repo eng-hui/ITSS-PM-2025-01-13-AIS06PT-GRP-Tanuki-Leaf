@@ -213,6 +213,7 @@ class Application:
             self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition", bg="SystemButtonFace"))
             self.listening = False
         
+
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
 
@@ -324,6 +325,7 @@ class Application:
         if classified_gesture and classified_gesture != 'None':
             self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
 
+
         style_change_gesture = self.config["gesture"]["style_change_gesture"]
         if classified_gesture == style_change_gesture or self.isChangingPrompt:
             self.camera_label.config(borderwidth=5, relief="solid", highlightbackground="red", highlightcolor="red", highlightthickness=5)
@@ -331,6 +333,7 @@ class Application:
         else:
             self.camera_label.config(borderwidth=0, relief="flat", highlightthickness=0)
             self.isChangingPrompt = False
+
 
         # For voice-activated changes, we need to handle them differently
         voice_activated = getattr(self, 'voice_activated', False)
@@ -364,6 +367,16 @@ class Application:
             self.diffusion_running = False
         
         
+
+        if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
+            print("changing prompt:", self.diffusion_prompt,classified_gesture)
+            # change prompt here
+            self.prepare_stream()
+            self.previous_prompt = self.diffusion_prompt
+            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+            self.isChangingPrompt = False
+
+
     def update_teleprompter_text(self, text):
         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
         self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
