@@ -10,6 +10,7 @@ from .gestureedit import GestureEditor  # Import GestureEditor
 import torch
 from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
+#from .override import OverrideStreamDiffusion as StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
 import numpy as np
@@ -31,7 +32,7 @@ class Application:
 
         # Diffusion prompt list and index. Pressing a trigger will step to the next prompt.
         self.prompt_array = [
-            "gojo satoru, white hair, black eye mask",
+            "satoru, white hair, black eye mask",
             "A rugged bounty hunter with a cybernetic eye, wearing a tattered leather jacket and carrying a plasma rifle in a neon-lit dystopian city.",
             "A soft-spoken librarian with braided auburn hair, round glasses, and a vintage dress, carefully placing books on a towering wooden shelf.",
             "A street artist with vibrant green hair, wearing a paint-stained hoodie, spraying a giant mural of a phoenix on a city wall at night.",
@@ -120,7 +121,7 @@ class Application:
         self.stream.load_lcm_lora()
         
         # load multiple lora, if trained properly, each lora should only has effect when the prompt contains keyword
-        self.stream.pipe.load_lora_weights("data/gojo.safetensors")
+        self.stream.pipe.load_lora_weights("data/satoru_2.safetensors")
 
         self.stream.fuse_lora()
         self.stream.vae = AutoencoderTiny.from_pretrained("madebyollin/taesd").to(
