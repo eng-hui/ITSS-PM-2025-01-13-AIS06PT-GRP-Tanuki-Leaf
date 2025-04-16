@@ -23,8 +23,6 @@ class Application:
     def __init__(self):
         self.config = config
 
-        self.diffusion_lock = threading.Lock()  # Lock for thread safety
-        
         # Increase the window size.
         self.root = tk.Tk()
         self.root.title(self.config["ui"]["window_title"])
@@ -399,12 +397,22 @@ class Application:
     def _prepare_stream_safe(self):
         """Thread-safe wrapper for prepare_stream"""
         # Set flag so diffusion knows we're preparing
-        with self.diffusion_lock:
-            self.diffusion_running = True
-            try:
-                self.prepare_stream()
-            finally:
-                self.diffusion_running = False
+        self.diffusion_running = True
+        try:
+            self.prepare_stream()
+        finally:
+            self.diffusion_running = False
+        
+        
+
+        if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
+            print("changing prompt:", self.diffusion_prompt,classified_gesture)
+            # change prompt here
+            self.prepare_stream()
+            self.previous_prompt = self.diffusion_prompt
+            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+            self.isChangingPrompt = False
+
 
     def update_teleprompter_text(self, text):
         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
