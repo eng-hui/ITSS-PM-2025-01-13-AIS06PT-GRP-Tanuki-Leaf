@@ -53,3 +53,23 @@ prompts:
 
 negative_prompt: "EasyNegative,badhandv4,(worst quality, low quality:1.4), crowd, (malformed hands:1.4),(poorly drawn hands:1.8),(mutated fingers:1.4),(extra limbs:1.35),(poorly drawn face:1.4),(bad hands:1.4),(malformed anatomy:1.4),(bad anatomy:1.4),(mutated anatomy:1.4), watermark,(mutated legs:1.4),text,twitter username, artist name, bad-hands-5, (text:1.3), hold"
         
+voice_recognition:
+  activation_phrase: "activate"
+  corrections:
+    # rem corrections
+    "ram": "rem"
+    "run": "rem"
+    "rom": "rem"
+    "room": "rem"
+    "rim": "rem"
+    "rome": "rem"
+    # satoru corrections
+    "satyr": "satoru"
+    "setting": "satoru"
+    "sitting": "satoru"
+    "sato": "satoru"
+    "sator": "satoru"
+    "settle": "satoru"
+    # naruto corrections
+    "nuts": "naruto"
+    # Add more corrections as needed

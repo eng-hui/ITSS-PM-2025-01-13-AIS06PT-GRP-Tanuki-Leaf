@@ -37,8 +37,7 @@ class Application:
         self.recognizer = sr.Recognizer()
         self.listening = False
         self.voice_active = False  # Flag to track if voice recognition is enabled
-        self.activation_phrase = self.config.get("voice_recognition", {}).get(
-        "activation_phrase", "activate")# Get activation phrase from config or use default
+        self.activation_phrase = "activate"  # The activation phrase
         self.listen_thread = None  # Keep track of the background listening thread
         
         # Load model
@@ -251,9 +250,9 @@ class Application:
             self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ON", bg="green"))
             self.root.after(0, lambda: self.voice_result_label.config(
                 text="Waiting for 'Activate'...", fg="blue"))
-                
+
     def listen_for_gesture_command(self):
-        """Listen for a specific gesture command after activation phrase with enhanced recognition"""
+        """Listen for a specific gesture command after activation phrase"""
         try:
             with sr.Microphone() as source:
                 print("Listening for a gesture command...")
@@ -263,19 +262,13 @@ class Application:
             try:
                 # Use Google's speech recognition service
                 text = self.recognizer.recognize_google(audio).lower()
-                print(f"Originally recognized: {text}")
-                
-                # Apply post-processing to correct common misrecognitions
-                text = self.improve_recognition(text)
-                print(f"After processing: {text}")
+                print(f"Command recognized: {text}")
                 
                 # Match recognized text with gestures
                 found_match = False
                 gesture_names = list(self.gesture_lib.get_all_gestures().keys())
                 
-                # First try direct matching
                 for gesture_name in gesture_names:
-                    # Simple check if the recognized text contains the gesture name
                     if gesture_name.lower() in text:
                         print(f"Matched gesture: {gesture_name}")
                         # Update result label with matched gesture
@@ -287,22 +280,6 @@ class Application:
                         self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
                         found_match = True
                         break
-                
-                # If no direct match, try fuzzy matching for short words
-                if not found_match:
-                    for gesture_name in gesture_names:
-                        # For short words, check if the recognized text contains something similar
-                        if len(gesture_name) <= 4 and self.is_similar_word(gesture_name.lower(), text):
-                            print(f"Fuzzy matched gesture: {gesture_name}")
-                            # Update result label with matched gesture
-                            self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
-                                text=f"Executing: {g} (fuzzy match)", fg="green"))
-                            # Flag that this is a voice-activated change
-                            self.voice_activated = True
-                            # Update to this gesture in the main thread
-                            self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
-                            found_match = True
-                            break
                 
                 if not found_match:
                     print(f"No matching gesture found for: {text}")
@@ -332,72 +309,72 @@ class Application:
                 self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ON", bg="green"))
                 self.root.after(0, lambda: self.voice_result_label.config(
                     text="Waiting for 'Activate'...", fg="blue"))
-
-    def improve_recognition(self, text):
-        """Apply custom corrections to improve speech recognition"""
-        # Get corrections dictionary from config
-        corrections = self.config.get("voice_recognition", {}).get("corrections", {})
-        
-        # Split text into words and check each one
-        words = text.split()
-        corrected_words = []
-        
-        for word in words:
-            # Check if this word should be corrected
-            if word in corrections:
-                corrected_words.append(corrections[word])
-            else:
-                corrected_words.append(word)
-        
-        return " ".join(corrected_words)
-
-    def is_similar_word(self, gesture_name, text):
-        """Check if a short gesture name might be similar to something in the text"""
-        words = text.split()
-        
-        # For very short words like "rem", check for partial matches
-        for word in words:
-            # If the word is very similar (differs by at most one character)
-            if len(word) <= 5 and self.levenshtein_distance(gesture_name, word) <= 1:
-                return True
                 
-            # Check for word endings (useful for plural forms, etc.)
-            if len(word) >= len(gesture_name) and word.startswith(gesture_name):
-                return True
+    def listen_for_gesture(self):
+        """Listen for voice commands and match with gestures"""
+        try:
+            with sr.Microphone() as source:
+                print("Listening for a gesture name...")
+                # Adjust for ambient noise
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                # Listen for audio input
+                audio = self.recognizer.listen(source, timeout=5)
+                
+            try:
+                # Use Google's speech recognition service
+                text = self.recognizer.recognize_google(audio).lower()
+                print(f"Recognized: {text}")
+                
+                # Match recognized text with gestures
+                found_match = False
+                # Get the available gestures using the get_gestures method 
+                # or access the correct attribute that contains gesture names
+                gesture_names = list(self.gesture_lib.get_all_gestures().keys())
+                
+                for gesture_name in gesture_names:
+                    # Simple check if the recognized text contains the gesture name
+                    if gesture_name.lower() in text:
+                        print(f"Matched gesture: {gesture_name}")
+                        # Update result label with matched gesture
+                        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
+                            text=f"Matched: {g}", fg="green"))
+                        # Flag that this is a voice-activated change
+                        self.voice_activated = True
+                        # Update to this gesture in the main thread
+                        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
+                        found_match = True
+                        break
+                
+                if not found_match:
+                    print(f"No matching gesture found for: {text}")
+                    self.root.after(0, lambda: self.voice_result_label.config(
+                        text="No matching gesture found", fg="orange"))
+                    
+            except sr.UnknownValueError:
+                print("Could not understand audio")
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text="Could not understand audio", fg="red"))
+            
+            except sr.RequestError as error:
+                print(f"Could not request results; {error}")
+                # Store error message in a local variable before using in lambda
+                error_msg = str(error)
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text=f"Request error: {error_msg[:30]}", fg="red"))
+                    
+        except Exception as error:
+            print(f"Error in voice recognition: {error}")
+            # Store error message in a local variable before using in lambda
+            error_msg = str(error)
+            self.root.after(0, lambda: self.voice_result_label.config(
+                text=f"Error: {error_msg[:30]}...", fg="red"))
         
-        return False
+        finally:
+            # Reset button appearance
+            self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition", bg="SystemButtonFace"))
+            self.listening = False
+        
 
-    def levenshtein_distance(self, s1, s2):
-        """Calculate the edit distance between two strings"""
-        if len(s1) < len(s2):
-            return self.levenshtein_distance(s2, s1)
-        
-        if len(s2) == 0:
-            return len(s1)
-        
-        previous_row = range(len(s2) + 1)
-        for i, c1 in enumerate(s1):
-            current_row = [i + 1]
-            for j, c2 in enumerate(s2):
-                # Calculate insertions, deletions and substitutions
-                insertions = previous_row[j + 1] + 1
-                deletions = current_row[j] + 1
-                substitutions = previous_row[j] + (c1 != c2)
-                current_row.append(min(insertions, deletions, substitutions))
-            previous_row = current_row
-        
-        return previous_row[-1]
-
-    def handle_matched_gesture(self, gesture_name):
-        """Common code for handling a matched gesture"""
-        # Update result label with matched gesture
-        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
-            text=f"Matched: {g}", fg="green"))
-        # Flag that this is a voice-activated change
-        self.voice_activated = True
-        # Update to this gesture in the main thread
-        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
-        
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
 
