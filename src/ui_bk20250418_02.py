@@ -13,7 +13,6 @@ from streamdiffusion import StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
 import speech_recognition as sr
-import time
 
 def launch_gesture_edit():
     # Launch GestureEditor
@@ -33,13 +32,6 @@ class Application:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
-        # Initialize speech recognition
-        self.recognizer = sr.Recognizer()
-        self.listening = False
-        self.voice_active = False  # Flag to track if voice recognition is enabled
-        self.activation_phrase = "activate"  # The activation phrase
-        self.listen_thread = None  # Keep track of the background listening thread
-        
         # Load model
         self.use_reg_model = self.config["gesture"]["use_model"]
         self.reg_model = None
@@ -100,10 +92,9 @@ class Application:
             .pack(pady=5, fill=tk.X)
         tk.Button(self.button_frame, text="Launch GestureEdit", command=launch_gesture_edit) \
             .pack(pady=5, fill=tk.X)
-            
-        # Add Voice toggle button with updated text
-        self.voice_button = tk.Button(self.button_frame, text="Voice Recognition: OFF", 
-                                    command=self.toggle_voice_recognition)
+
+        # Add Voice button
+        self.voice_button = tk.Button(self.button_frame, text="Voice Recognition", command=self.voice_recognition_action)
         self.voice_button.pack(pady=5, fill=tk.X)
                 
         # Add voice result label for displaying
@@ -183,133 +174,19 @@ class Application:
         self.previous_prompt = None
         self.prepare_stream()
         
-    def toggle_voice_recognition(self):
-        """Toggle voice recognition on/off"""
-        self.voice_active = not self.voice_active
-        
-        if self.voice_active:
-            # Turn on continuous listening
-            self.voice_button.config(text="Voice Recognition: ON", bg="green")
-            self.voice_result_label.config(text="Waiting for 'Activate'...", fg="blue")
-            
-            # Start continuous listening in a separate thread
-            if self.listen_thread is None or not self.listen_thread.is_alive():
-                self.listen_thread = threading.Thread(target=self.continuous_listen, daemon=True)
-                self.listen_thread.start()
-        else:
-            # Turn off continuous listening
-            self.voice_button.config(text="Voice Recognition: OFF", bg="SystemButtonFace")
-            self.voice_result_label.config(text="Voice recognition disabled", fg="gray")
-            self.listening = False  # This will cause the continuous_listen loop to exit
+    def voice_recognition_action(self):
+        """Start voice recognition in a separate thread to avoid blocking UI"""
+        if self.listening:
+            # If already listening, do nothing
+            return
 
-    def continuous_listen(self):
-        """Continuously listen for the activation phrase"""
+        # Update button appearance to indicate listening
+        self.voice_button.config(text="Listening...", bg="red")
         self.listening = True
         
-        while self.listening and self.voice_active:
-            try:
-                with sr.Microphone() as source:
-                    print("Listening for activation phrase...")
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                    audio = self.recognizer.listen(source, phrase_time_limit=3)  # Short timeout for better responsiveness
-                    
-                try:
-                    # Use Google's speech recognition service
-                    text = self.recognizer.recognize_google(audio).lower()
-                    print(f"Heard: {text}")
-                    
-                    # Check for activation phrase
-                    if self.activation_phrase in text:
-                        print("Activation phrase detected!")
-                        # Update UI to show we're now listening for a command
-                        self.root.after(0, lambda: self.voice_button.config(text="Listening for command...", bg="red"))
-                        self.root.after(0, lambda: self.voice_result_label.config(
-                            text="Activation phrase detected! Listening for command...", fg="green"))
-                        
-                        # Wait briefly before listening for the actual command
-                        time.sleep(0.5)
-                        self.listen_for_gesture_command()
-                    
-                except sr.UnknownValueError:
-                    # No speech detected, continue listening
-                    pass
-                except sr.RequestError as e:
-                    print(f"Could not request results; {e}")
-                    self.root.after(0, lambda: self.voice_result_label.config(
-                        text=f"API error: {str(e)[:30]}...", fg="red"))
-                    # Wait before trying again
-                    time.sleep(2)
-                    
-            except Exception as e:
-                print(f"Error in continuous listening: {e}")
-                # Short delay before retrying
-                time.sleep(1)
-                
-        # If we exit the loop, make sure UI is reset if voice_active is still on
-        if self.voice_active:
-            self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ON", bg="green"))
-            self.root.after(0, lambda: self.voice_result_label.config(
-                text="Waiting for 'Activate'...", fg="blue"))
-
-    def listen_for_gesture_command(self):
-        """Listen for a specific gesture command after activation phrase"""
-        try:
-            with sr.Microphone() as source:
-                print("Listening for a gesture command...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                audio = self.recognizer.listen(source, timeout=5)
-                
-            try:
-                # Use Google's speech recognition service
-                text = self.recognizer.recognize_google(audio).lower()
-                print(f"Command recognized: {text}")
-                
-                # Match recognized text with gestures
-                found_match = False
-                gesture_names = list(self.gesture_lib.get_all_gestures().keys())
-                
-                for gesture_name in gesture_names:
-                    if gesture_name.lower() in text:
-                        print(f"Matched gesture: {gesture_name}")
-                        # Update result label with matched gesture
-                        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
-                            text=f"Executing: {g}", fg="green"))
-                        # Flag that this is a voice-activated change
-                        self.voice_activated = True
-                        # Update to this gesture in the main thread
-                        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
-                        found_match = True
-                        break
-                
-                if not found_match:
-                    print(f"No matching gesture found for: {text}")
-                    self.root.after(0, lambda: self.voice_result_label.config(
-                        text=f"Command not recognized: {text}", fg="orange"))
-                    
-            except sr.UnknownValueError:
-                print("Could not understand command")
-                self.root.after(0, lambda: self.voice_result_label.config(
-                    text="Could not understand command", fg="red"))
-            
-            except sr.RequestError as error:
-                print(f"Could not request results; {error}")
-                error_msg = str(error)
-                self.root.after(0, lambda: self.voice_result_label.config(
-                    text=f"Request error: {error_msg[:30]}", fg="red"))
-                    
-        except Exception as error:
-            print(f"Error in command recognition: {error}")
-            error_msg = str(error)
-            self.root.after(0, lambda: self.voice_result_label.config(
-                text=f"Error: {error_msg[:30]}...", fg="red"))
-        
-        finally:
-            # Reset UI to continue listening for activation phrase
-            if self.voice_active:
-                self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ON", bg="green"))
-                self.root.after(0, lambda: self.voice_result_label.config(
-                    text="Waiting for 'Activate'...", fg="blue"))
-                
+        # Start listening in a thread
+        threading.Thread(target=self.listen_for_gesture, daemon=True).start()
+    
     def listen_for_gesture(self):
         """Listen for voice commands and match with gestures"""
         try:
