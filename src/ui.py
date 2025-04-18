@@ -418,56 +418,6 @@ class Application:
             finally:
                 self.diffusion_running = False
     
-    #  delete
-    # def handle_gesture_change(self, classified_gesture):
-        
-    #     if classified_gesture and classified_gesture != 'None':
-    #         # Check if the prompt will change before updating it
-    #         new_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
-    #         if new_prompt != self.diffusion_prompt:
-    #             self.diffusion_prompt = new_prompt
-                
-    #     style_change_gesture = self.config["gesture"]["style_change_gesture"]
-    #     if classified_gesture == style_change_gesture or self.isChangingPrompt:
-    #         self.camera_label.config(borderwidth=5, relief="solid", highlightbackground="red", 
-    #                                highlightcolor="red", highlightthickness=5)
-    #         self.isChangingPrompt = True
-    #     else:
-    #         self.camera_label.config(borderwidth=0, relief="flat", highlightthickness=0)
-    #         self.isChangingPrompt = False
-    
-    #     # For voice-activated changes, we need to handle them differently
-    #     voice_activated = getattr(self, 'voice_activated', False)
-    
-    #     # prompt_changed or
-    #     # If prompt changed (either by voice or hand gesture)
-    #     if (voice_activated and self.previous_prompt != self.diffusion_prompt) or \
-    #        (self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None'):
-    #         print("changing prompt:", self.diffusion_prompt, classified_gesture)
-            
-    #         # Create a "needs update" flag instead of requiring immediate action
-    #         self.prompt_needs_update = True
-            
-    #         # Force teleprompter reset to restart scrolling
-    #         self.teleprompter_reset = True
-        
-    #         # Avoid conflicts with diffusion processing
-    #         if not self.diffusion_running:
-    #             # Run prepare_stream in a separate thread
-    #             threading.Thread(target=self._prepare_stream_safe, daemon=True).start()
-                
-    #         self.previous_prompt = self.diffusion_prompt
-            
-    #         # Reset the teleprompter position to start scrolling from the right
-    #         self.teleprompter_canvas.coords(self.teleprompter_text, 
-    #                                        self.teleprompter_canvas.winfo_width(), 15)
-            
-    #         # Reset flags
-    #         if voice_activated:
-    #             self.voice_activated = False
-    #         else:
-    #             self.isChangingPrompt = False
-
     def update_teleprompter_text(self, text):
         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
         self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
@@ -481,47 +431,6 @@ class Application:
             self.teleprompter_canvas.move(self.teleprompter_text, -5, 0)  # Increase the move distance
             self.teleprompter_canvas.after(30, self.scroll_teleprompter)  # Decrease the delay
 
-    # DELETE
-    # def update_teleprompter_text(self, text):
-    #     # Only update text if it has changed
-    #     current_text = self.teleprompter_canvas.itemcget(self.teleprompter_text, 'text')
-    #     if current_text != text:
-    #         # Reset position and update text when content changes
-    #         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
-    #         # Position the text at the far right to start scrolling again
-    #         self.teleprompter_canvas.coords(self.teleprompter_text, 
-    #                                         self.teleprompter_canvas.winfo_width(), 15)
-    #         # Set a flag to indicate we've reset the text position
-    #         self.teleprompter_reset = True
-            
-    #     # Always try to scroll - the scroll method will check if we should continue
-    #     self.scroll_teleprompter()
-
-    # def scroll_teleprompter(self):
-    #     # Don't scroll if we're in prompt changing mode or the listening mode
-    #     if self.isChangingPrompt or getattr(self, 'listening', False):
-    #         # Just schedule the next check but don't move the text
-    #         self.teleprompter_canvas.after(30, self.scroll_teleprompter)
-    #         return
-            
-    #     x, y = self.teleprompter_canvas.coords(self.teleprompter_text)
-    #     text_bounds = self.teleprompter_canvas.bbox(self.teleprompter_text)
-        
-    #     if text_bounds:  # Check if text_bounds is not None
-    #         text_width = text_bounds[2] - text_bounds[0]
-    #         canvas_width = self.teleprompter_canvas.winfo_width()
-            
-    #         # Move the text to the left
-    #         self.teleprompter_canvas.move(self.teleprompter_text, -2, 0)
-            
-    #         # If text has completely scrolled off the left side, reset it to the right
-    #         if x + text_width < 0:
-    #             # Reset position to start from the right edge again
-    #             self.teleprompter_canvas.coords(self.teleprompter_text, canvas_width, 15)
-        
-    #     # Continue scrolling regardless
-    #     self.teleprompter_canvas.after(50, self.scroll_teleprompter)
-        
     def run(self):
         self.root.update_idletasks()
         self.show_frame()        
