@@ -40,8 +40,6 @@ class Application:
         self.activation_phrase = self.config.get("voice_recognition", {}).get(
         "activation_phrase", "activate")# Get activation phrase from config or use default
         self.listen_thread = None  # Keep track of the background listening thread
-        self.current_gesture = "None"
-        self.voice_matched_gesture = "None" # Add initialization for tracking voice-matched gestures separately from camera gestures
         
         # Load model
         self.use_reg_model = self.config["gesture"]["use_model"]
@@ -195,9 +193,6 @@ class Application:
             self.voice_button.config(text="Voice Recognition: ON", bg="green")
             self.voice_result_label.config(text="Waiting for 'Activate'...", fg="blue")
             
-            # Flag to track if we've been activated
-            self.voice_activated_mode = False
-            
             # Start continuous listening in a separate thread
             if self.listen_thread is None or not self.listen_thread.is_alive():
                 self.listen_thread = threading.Thread(target=self.continuous_listen, daemon=True)
@@ -207,127 +202,137 @@ class Application:
             self.voice_button.config(text="Voice Recognition: OFF", bg="SystemButtonFace")
             self.voice_result_label.config(text="Voice recognition disabled", fg="gray")
             self.listening = False  # This will cause the continuous_listen loop to exit
-            self.voice_activated_mode = False  # Reset activation state
 
     def continuous_listen(self):
-        """Continuously listen for the activation phrase and then for commands"""
+        """Continuously listen for the activation phrase"""
         self.listening = True
         
         while self.listening and self.voice_active:
             try:
                 with sr.Microphone() as source:
-                    # If we're already in activated mode, listen for commands directly
-                    if hasattr(self, 'voice_activated_mode') and self.voice_activated_mode:
-                        print("Listening for a command...")
-                        self.voice_button.config(text="Listening for command...", bg="yellow")
+                    print("Listening for activation phrase...")
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                    audio = self.recognizer.listen(source, phrase_time_limit=3)  # Short timeout for better responsiveness
+                    
+                try:
+                    # Use Google's speech recognition service
+                    text = self.recognizer.recognize_google(audio).lower()
+                    print(f"Heard: {text}")
+                    
+                    # Check for activation phrase
+                    if self.activation_phrase in text:
+                        print("Activation phrase detected!")
+                        # Update UI to show we're now listening for a command
+                        self.root.after(0, lambda: self.voice_button.config(text="Listening for command...", bg="red"))
+                        self.root.after(0, lambda: self.voice_result_label.config(
+                            text="Activation phrase detected! Listening for command...", fg="green"))
                         
-                        # Display current voice-matched gesture (not camera-detected gesture)
-                        voice_matched_gesture = getattr(self, 'voice_matched_gesture', 'None')
-                        self.voice_result_label.config(text=f"ASR Matched: {voice_matched_gesture}", 
-                                                    fg="green" if voice_matched_gesture != "None" else "blue")
-                        
-                        self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                        audio = self.recognizer.listen(source, phrase_time_limit=5)
-                        
-                        try:
-                            # Process the command
-                            text = self.recognizer.recognize_google(audio).lower()
-                            print(f"Originally recognized: {text}")
-                            
-                            # Process the command just like in listen_for_gesture_command
-                            text = self.improve_recognition(text)
-                            print(f"After processing: {text}")
-                            
-                            # Match recognized text with gestures
-                            found_match = False
-                            gesture_names = list(self.gesture_lib.get_all_gestures().keys())
-                            
-                            # First try direct matching
-                            for gesture_name in gesture_names:
-                                if gesture_name.lower() in text:
-                                    print(f"Matched gesture: {gesture_name}")
-                                    # Update voice_matched_gesture to track what voice matched
-                                    self.voice_matched_gesture = gesture_name
-                                    self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
-                                        text=f"ASR Matched: {g}", fg="green"))
-                                    self.voice_activated = True
-                                    self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
-                                    found_match = True
-                                    break
-                            
-                            # If no direct match, try fuzzy matching for short words
-                            if not found_match:
-                                for gesture_name in gesture_names:
-                                    if len(gesture_name) <= 4 and self.is_similar_word(gesture_name.lower(), text):
-                                        print(f"Fuzzy matched gesture: {gesture_name}")
-                                        # Update voice_matched_gesture to track what voice matched
-                                        self.voice_matched_gesture = gesture_name
-                                        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
-                                            text=f"ASR Matched: {g} (fuzzy match)", fg="green"))
-                                        self.voice_activated = True
-                                        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
-                                        found_match = True
-                                        break
-                            
-                            if not found_match:
-                                print(f"No matching gesture found for: {text}")
-                                self.root.after(0, lambda: self.voice_result_label.config(
-                                    text=f"Command not recognized: {text}", fg="orange"))
-                                    
-                        except sr.UnknownValueError:
-                            # No speech detected, continue listening
-                            print("Could not understand command")
-                            self.root.after(0, lambda: self.voice_result_label.config(
-                                text="Could not understand command", fg="red"))
-                        except sr.RequestError as e:
-                            print(f"Could not request results; {e}")
-                            error_msg = str(e)
-                            self.root.after(0, lambda: self.voice_result_label.config(
-                                text=f"API error: {error_msg[:30]}...", fg="red"))
-                            time.sleep(2)
-                        
-                    # If not yet activated, listen for the activation phrase
-                    else:
-                        print("Listening for activation phrase...")
-                        self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                        audio = self.recognizer.listen(source, phrase_time_limit=3)
-                        
-                        try:
-                            text = self.recognizer.recognize_google(audio).lower()
-                            print(f"Heard: {text}")
-                            
-                            # Check for activation phrase
-                            if self.activation_phrase in text:
-                                print("Activation phrase detected!")
-                                # Set flag that we're now in active command mode
-                                self.voice_activated_mode = True
-                                # Initialize voice matched gesture
-                                self.voice_matched_gesture = "None"
-                                
-                                # Update UI to show we're now in command mode
-                                self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ACTIVE", bg="red"))
-                                self.root.after(0, lambda: self.voice_result_label.config(
-                                    text="Activated! Ready for commands.", fg="green"))
-                        
-                        except sr.UnknownValueError:
-                            # No speech detected, continue listening
-                            pass
-                        except sr.RequestError as e:
-                            print(f"Could not request results; {e}")
-                            self.root.after(0, lambda: self.voice_result_label.config(
-                                text=f"API error: {str(e)[:30]}...", fg="red"))
-                            time.sleep(2)
+                        # Wait briefly before listening for the actual command
+                        time.sleep(0.5)
+                        self.listen_for_gesture_command()
+                    
+                except sr.UnknownValueError:
+                    # No speech detected, continue listening
+                    pass
+                except sr.RequestError as e:
+                    print(f"Could not request results; {e}")
+                    self.root.after(0, lambda: self.voice_result_label.config(
+                        text=f"API error: {str(e)[:30]}...", fg="red"))
+                    # Wait before trying again
+                    time.sleep(2)
                     
             except Exception as e:
                 print(f"Error in continuous listening: {e}")
+                # Short delay before retrying
                 time.sleep(1)
-                    
-        # If we exit the loop, reset UI if still active
+                
+        # If we exit the loop, make sure UI is reset if voice_active is still on
         if self.voice_active:
             self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ON", bg="green"))
             self.root.after(0, lambda: self.voice_result_label.config(
                 text="Waiting for 'Activate'...", fg="blue"))
+                
+    def listen_for_gesture_command(self):
+        """Listen for a specific gesture command after activation phrase with enhanced recognition"""
+        try:
+            with sr.Microphone() as source:
+                print("Listening for a gesture command...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                audio = self.recognizer.listen(source, timeout=5)
+                
+            try:
+                # Use Google's speech recognition service
+                text = self.recognizer.recognize_google(audio).lower()
+                print(f"Originally recognized: {text}")
+                
+                # Apply post-processing to correct common misrecognitions
+                text = self.improve_recognition(text)
+                print(f"After processing: {text}")
+                
+                # Match recognized text with gestures
+                found_match = False
+                gesture_names = list(self.gesture_lib.get_all_gestures().keys())
+                
+                # First try direct matching
+                for gesture_name in gesture_names:
+                    # Simple check if the recognized text contains the gesture name
+                    if gesture_name.lower() in text:
+                        print(f"Matched gesture: {gesture_name}")
+                        # Update result label with matched gesture
+                        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
+                            text=f"Executing: {g}", fg="green"))
+                        # Flag that this is a voice-activated change
+                        self.voice_activated = True
+                        # Update to this gesture in the main thread
+                        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
+                        found_match = True
+                        break
+                
+                # If no direct match, try fuzzy matching for short words
+                if not found_match:
+                    for gesture_name in gesture_names:
+                        # For short words, check if the recognized text contains something similar
+                        if len(gesture_name) <= 4 and self.is_similar_word(gesture_name.lower(), text):
+                            print(f"Fuzzy matched gesture: {gesture_name}")
+                            # Update result label with matched gesture
+                            self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
+                                text=f"Executing: {g} (fuzzy match)", fg="green"))
+                            # Flag that this is a voice-activated change
+                            self.voice_activated = True
+                            # Update to this gesture in the main thread
+                            self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
+                            found_match = True
+                            break
+                
+                if not found_match:
+                    print(f"No matching gesture found for: {text}")
+                    self.root.after(0, lambda: self.voice_result_label.config(
+                        text=f"Command not recognized: {text}", fg="orange"))
+                    
+            except sr.UnknownValueError:
+                print("Could not understand command")
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text="Could not understand command", fg="red"))
             
+            except sr.RequestError as error:
+                print(f"Could not request results; {error}")
+                error_msg = str(error)
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text=f"Request error: {error_msg[:30]}", fg="red"))
+                    
+        except Exception as error:
+            print(f"Error in command recognition: {error}")
+            error_msg = str(error)
+            self.root.after(0, lambda: self.voice_result_label.config(
+                text=f"Error: {error_msg[:30]}...", fg="red"))
+        
+        finally:
+            # Reset UI to continue listening for activation phrase
+            if self.voice_active:
+                self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition: ON", bg="green"))
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text="Waiting for 'Activate'...", fg="blue"))
+
     def improve_recognition(self, text):
         """Apply custom corrections to improve speech recognition"""
         # Get corrections dictionary from config
@@ -385,12 +390,14 @@ class Application:
 
     def handle_matched_gesture(self, gesture_name):
         """Common code for handling a matched gesture"""
+        # Update result label with matched gesture
+        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
+            text=f"Matched: {g}", fg="green"))
         # Flag that this is a voice-activated change
         self.voice_activated = True
-        self.voice_matched_gesture = gesture_name
         # Update to this gesture in the main thread
         self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
-    
+        
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
 
@@ -507,17 +514,12 @@ class Application:
         
             
         self.camera_label.after(30, self.show_frame)
-        
+
     def handle_gesture_change(self, classified_gesture):
         if classified_gesture and classified_gesture != 'None':
             self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
 
-        # Update the current_gesture (but NOT voice_result_label unless from voice activation)
-        self.current_gesture = classified_gesture
 
-        # Only update the label if this was voice-activated
-        voice_activated = getattr(self, 'voice_activated', False)
-        
         style_change_gesture = self.config["gesture"]["style_change_gesture"]
         if classified_gesture == style_change_gesture or self.isChangingPrompt:
             self.camera_label.config(borderwidth=5, relief="solid", highlightbackground="red", highlightcolor="red", highlightthickness=5)
@@ -526,12 +528,16 @@ class Application:
             self.camera_label.config(borderwidth=0, relief="flat", highlightthickness=0)
             self.isChangingPrompt = False
 
+
+        # For voice-activated changes, we need to handle them differently
+        voice_activated = getattr(self, 'voice_activated', False)
+
         # If it's a voice command or we're in changing prompt mode and the prompt changed
         if (voice_activated and self.previous_prompt != self.diffusion_prompt) or \
         (self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None'):
             print("changing prompt:", self.diffusion_prompt, classified_gesture)
             
-            # Create a "needs update" flag instead of requiring immediate action
+             # Create a "needs update" flag instead of requiring immediate action
             self.prompt_needs_update = True
         
             # Avoid conflicts with diffusion processing
