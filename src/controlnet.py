@@ -12,7 +12,7 @@ pipe_t = StableDiffusionControlNetPipeline.from_pretrained(
 ).to("cuda")
 
 def get_a_b_control_net(a, b, o_image):
-    print(f"hhhhhhhhhhhhhhhhhhhhhhh:{o_image.shape}")
+    # print(f"get_a_b_control_net:{o_image.shape}")
     o_image = o_image[0].permute(1, 2, 0)
     image = pipe_t.prepare_image(    
             image=openpose(o_image.cpu()),

@@ -323,7 +323,7 @@ class Application:
             self.first_flag = False
 
         pil_image = None # fake images
-        print("xxxxxxxxxxxxxxxxxxxxxxxx")
+        print("start preprare diff stream")
         num_inference_steps = self.config["diffusion"]["num_inference_steps"]
         self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
         # Warm up steps.
@@ -337,7 +337,7 @@ class Application:
         for _ in range(4):
             _ = self.stream(pil_image)
         
-        print("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
+        print("end of prepare diff stream")
 
     def process_diffusion(self, frame):
         # Set flag so no new diffusion is started while running.
@@ -460,7 +460,7 @@ class Application:
         except Exception as e:
             print(e)
         finally:
-            print("hello")
+            print("setting diffusion running to False")
             self.diffusion_running = False
         
         
