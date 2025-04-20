@@ -141,6 +141,48 @@ class Application:
             device=torch.device("cuda"),
             dtype=torch.float16,
         )
+        # self.stream = StreamDiffusion(
+        #     self.pipe,
+        #     # t_index_list=[16,18,20,22],
+        #     t_index_list = self.config["diffusion"]["t_index_list"],
+        #     torch_dtype=torch.float16,
+        #     cfg_type = self.config["diffusion"]["cfg_type"] 
+        # )
+
+        # lora_path = self.config["diffusion"]["lora"]
+        # use_lora = self.config["diffusion"]["use_lora"]
+        # encoder_path = self.config["diffusion"]["encoder"]
+        # self.stream.load_lcm_lora()
+        # if use_lora:
+        #     self.stream.pipe.load_lora_weights(lora_path)
+        # self.stream.pipe.unload_lora_weights()  
+        # self.stream.fuse_lora()
+
+        # self.stream.enable_similar_image_filter()
+        # self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
+        #     device=self.pipe.device, dtype=self.pipe.dtype)
+        # self.pipe.enable_xformers_memory_efficient_attention()
+        
+
+        # # Set initial blur intensity.
+        # self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
+
+        # # Flag to avoid overlapping diffusion tasks.
+        # self.diffusion_running = False
+        # default_key = list(self.prompt_array.keys())[0]
+        # self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
+        # self.previous_prompt = None
+
+        # Set initial blur intensity.
+        self.classified_gesture = None
+        self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
+        self.first_flag = True
+
+        # Flag to avoid overlapping diffusion tasks.
+        self.diffusion_running = False
+        default_key = list(self.prompt_array.keys())[0]
+        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
+        self.previous_prompt = None
         self.stream = StreamDiffusion(
             self.pipe,
             # t_index_list=[16,18,20,22],
@@ -149,27 +191,6 @@ class Application:
             cfg_type = self.config["diffusion"]["cfg_type"] 
         )
 
-        lora_path = self.config["diffusion"]["lora"]
-        use_lora = self.config["diffusion"]["use_lora"]
-        encoder_path = self.config["diffusion"]["encoder"]
-        self.stream.load_lcm_lora()
-        if use_lora:
-            self.stream.pipe.load_lora_weights(lora_path)
-        self.stream.fuse_lora()
-
-        self.stream.enable_similar_image_filter()
-        self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
-            device=self.pipe.device, dtype=self.pipe.dtype)
-        self.pipe.enable_xformers_memory_efficient_attention()
-
-        # Set initial blur intensity.
-        self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
-
-        # Flag to avoid overlapping diffusion tasks.
-        self.diffusion_running = False
-        default_key = list(self.prompt_array.keys())[0]
-        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
-        self.previous_prompt = None
         self.prepare_stream()
         
     def voice_recognition_action(self):
@@ -278,19 +299,45 @@ class Application:
         print(f"Captured gesture '{gesture_name}' for {side} hand.")
 
     def prepare_stream(self):
-            pil_image = None # fake image
-            num_inference_steps = self.config["diffusion"]["num_inference_steps"]
-            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
-            # Warm up steps.
-            ret, frame = self.cap.read()
-            if not ret:
-                print("Unable to read from camera.")
-                return
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(image_rgb).resize((512, 512))
-            self.stream(pil_image)
-            for _ in range(4):
-                _ = self.stream(pil_image)
+        self.stream.pipe.unload_lora_weights()  
+        lora_path = self.config["diffusion"]["lora"]
+        use_lora = self.config["diffusion"]["use_lora"]
+        encoder_path = self.config["diffusion"]["encoder"]
+        print(f"load {self.classified_gesture}")
+        self.stream.load_lcm_lora()
+        if use_lora and (self.classified_gesture in ("satoru", "1", 1)):
+            print("check lora loaded")
+            self.stream.pipe.load_lora_weights(lora_path)
+        else:
+            pass
+            #self.stream.pipe.load_lora_weights(lora_path)
+        
+        # self.stream.fuse_lora()
+
+        if self.first_flag:
+            self.stream.pipe.load_lora_weights(lora_path)
+            self.stream.enable_similar_image_filter()
+            self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
+                device=self.pipe.device, dtype=self.pipe.dtype)
+            self.pipe.enable_xformers_memory_efficient_attention()
+            self.first_flag = False
+
+        pil_image = None # fake images
+        print("xxxxxxxxxxxxxxxxxxxxxxxx")
+        num_inference_steps = self.config["diffusion"]["num_inference_steps"]
+        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
+        # Warm up steps.
+        ret, frame = self.cap.read()
+        if not ret:
+            print("Unable to read from camera.")
+            return
+        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(image_rgb).resize((512, 512))
+        self.stream(pil_image)
+        for _ in range(4):
+            _ = self.stream(pil_image)
+        
+        print("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
 
     def process_diffusion(self, frame):
         # Set flag so no new diffusion is started while running.
@@ -366,6 +413,8 @@ class Application:
     def handle_gesture_change(self, classified_gesture):
         if classified_gesture and classified_gesture != 'None':
             self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+            self.classified_gesture = classified_gesture
+            
 
 
         style_change_gesture = self.config["gesture"]["style_change_gesture"]
@@ -380,11 +429,13 @@ class Application:
         # For voice-activated changes, we need to handle them differently
         voice_activated = getattr(self, 'voice_activated', False)
 
-        # If it's a voice command or we're in changing prompt mode and the prompt changed
+        #If it's a voice command or we're in changing prompt mode and the prompt changed
         if (voice_activated and self.previous_prompt != self.diffusion_prompt) or \
         (self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None'):
+            print(self.classified_gesture)
             print("changing prompt:", self.diffusion_prompt, classified_gesture)
             
+            self.diffusion_running = False
             # Avoid conflicts with diffusion processing
             if not self.diffusion_running:
                 # Run prepare_stream in a separate thread
@@ -402,16 +453,20 @@ class Application:
     def _prepare_stream_safe(self):
         """Thread-safe wrapper for prepare_stream"""
         # Set flag so diffusion knows we're preparing
+        print("oreprare strean safe")
         self.diffusion_running = True
         try:
             self.prepare_stream()
+        except Exception as e:
+            print(e)
         finally:
+            print("hello")
             self.diffusion_running = False
         
         
 
         if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
-            print("changing prompt:", self.diffusion_prompt,classified_gesture)
+            print("changing prompt x:", self.diffusion_prompt,classified_gesture)
             # change prompt here
             self.prepare_stream()
             self.previous_prompt = self.diffusion_prompt
