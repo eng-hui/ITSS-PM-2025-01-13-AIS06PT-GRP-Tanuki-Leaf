@@ -4,8 +4,9 @@ import mediapipe as mp
 from .explosion import create_explosion, update_particles
 from .mediapipe_utils import extract_hand_vectors
 from .utils import draw_text_with_outline
+import time
 
-def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_drawing, trigger_diffusion_callback=None, trigger_explosion_callback=None):
+def detect_objects(frame, gesture_lib, blur_intensity, hands, mp_drawing, trigger_diffusion_callback=None, trigger_explosion_callback=None, use_reg_model=False, reg_model=None):
     image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(image_rgb)
     h, w, _ = frame.shape
@@ -16,52 +17,67 @@ def detect_objects(frame, shape_manager, gesture_lib, blur_intensity, hands, mp_
         blurred_frame = cv2.GaussianBlur(frame, (blur_intensity, blur_intensity), 0)
 
     mask = np.zeros((h, w), dtype=np.uint8)
-    x0, y0 = shape_manager.position
     explosion_triggered = False
+    classified_gesture = None
+
+    hand_info = []  # To store all relevant info per hand
 
     if results.multi_hand_landmarks and results.multi_handedness:
         for hlm, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-            collision = False
+            hand_label = handedness.classification[0].label
+            side = "Left" if hand_label.lower() == "left" else "Right"
+
+            # Draw mask
             for landmark in hlm.landmark:
                 kx, ky = int(landmark.x * w), int(landmark.y * h)
                 cv2.circle(mask, (kx, ky), 15, 255, -1)
-                if x0 <= kx <= x0 + shape_manager.size and y0 <= ky <= y0 + shape_manager.size:
-                    collision = True
-                    break
 
             vectors = extract_hand_vectors(hlm)
-            side = "Left" if handedness.classification[0].label.lower() == "left" else "Right"
-            classified_gesture = gesture_lib.classify(vectors, side)
-            # If the special trigger gesture is detected, invoke the diffusion callback
-            if collision and classified_gesture == "66666" and trigger_diffusion_callback is not None:
-                trigger_diffusion_callback(frame)  # send raw frame for diffusion
-            # Existing explosion trigger using shape_manager’s target gesture.
-            if collision and classified_gesture == shape_manager.target_gesture:
-                create_explosion(x0 + shape_manager.size // 2, y0 + shape_manager.size // 2)
-                shape_manager.move(w, h)
-                explosion_triggered = True
-                if trigger_explosion_callback:
-                    trigger_explosion_callback()  # Callback to update prompt_index in Application.
-                break
 
+            if use_reg_model:
+                # start_time = time.time()
+                gesture = reg_model.classify(vectors)
+                # end_time = time.time()
+                # print(f"Model Classification time: {end_time - start_time:.4f} seconds")
+            else:
+                # start_time = time.time()
+                gesture = gesture_lib.classify(vectors, side)
+                # end_time = time.time()
+                # print(f"Cosine Similarity time: {end_time - start_time:.4f} seconds")
+
+            # Save everything for later use
+            hand_info.append({
+                'hlm': hlm,
+                'side': side,
+                'label': hand_label,
+                'gesture': gesture
+            })
+
+            if side == "Left":
+                classified_gesture = gesture  # Give priority to left hand
+            elif classified_gesture is None:
+                classified_gesture = gesture
+
+    # Combine blurred and original frame based on mask
     mask_3channel = cv2.merge([mask, mask, mask])
     final_frame = np.where(mask_3channel == 255, frame, blurred_frame)
 
-    if results.multi_hand_landmarks and results.multi_handedness:
-        for hlm, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-            mp_drawing.draw_landmarks(final_frame, hlm, mp.solutions.hands.HAND_CONNECTIONS)
-            hand_label = handedness.classification[0].label
-            x_label = int(hlm.landmark[0].x * w)
-            y_label = int(hlm.landmark[0].y * h) - 10
-            draw_text_with_outline(final_frame, f"{hand_label} Hand", (x_label, y_label),
-                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), (0,0,0), 2)
-            vectors = extract_hand_vectors(hlm)
-            side = "Left" if hand_label.lower() == "left" else "Right"
-            gesture_name = gesture_lib.classify(vectors, side)
-            cv2.putText(final_frame, gesture_name,
-                        (x_label, y_label + 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+    # Now draw landmarks and gesture names
+    for info in hand_info:
+        hlm = info['hlm']
+        hand_label = info['label']
+        gesture = info['gesture']
+        side = info['side']
 
-    shape_manager.draw(final_frame)
-    update_particles(final_frame)
-    return final_frame
+        mp_drawing.draw_landmarks(final_frame, hlm, mp.solutions.hands.HAND_CONNECTIONS)
+
+        x_label = int(hlm.landmark[0].x * w)
+        y_label = int(hlm.landmark[0].y * h) - 10
+
+        draw_text_with_outline(final_frame, f"{hand_label} Hand", (x_label, y_label),
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), (0,0,0), 2)
+
+        cv2.putText(final_frame, gesture, (x_label, y_label + 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+
+    return final_frame, classified_gesture

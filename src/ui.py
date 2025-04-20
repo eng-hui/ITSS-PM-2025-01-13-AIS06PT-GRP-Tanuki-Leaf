@@ -3,10 +3,10 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from .config import config
 from .gesture import GestureLibrary
-from .shapes import ShapeManager
 from .mediapipe_utils import get_hands, get_drawing_utils, extract_hand_vectors
 from .detection import detect_objects
 from .gestureedit import GestureEditor  # Import GestureEditor
+from .ml_gesture_recognition import MLGestureRecognition
 import torch
 from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
@@ -14,11 +14,13 @@ from streamdiffusion import StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
 import numpy as np
+import speech_recognition as sr
+
 def launch_gesture_edit():
     # Launch GestureEditor
     editor = GestureEditor()
     editor.mainloop()
-
+    
 class Application:
     def __init__(self):
         self.config = config
@@ -26,48 +28,61 @@ class Application:
         # Increase the window size.
         self.root = tk.Tk()
         self.root.title(self.config["ui"]["window_title"])
-        self.root.geometry("1400x800")  # Expanded window size
+        self.root.geometry("1400x800+50+50")  # Expanded window size
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
+        self.use_reg_model = self.config["gesture"]["use_model"]
+        self.reg_model = None
+        self.reg_classes = []
+        if self.use_reg_model:
+            reg_classes = self.config["gesture"]["label_classes"]
+            self.reg_model = MLGestureRecognition(self.config["gesture"]["model_path"],classes=reg_classes)
 
-        # Diffusion prompt list and index. Pressing a trigger will step to the next prompt.
-        self.prompt_array = [
-            "satoru, white hair, black eye mask",
-            "A rugged bounty hunter with a cybernetic eye, wearing a tattered leather jacket and carrying a plasma rifle in a neon-lit dystopian city.",
-            "A soft-spoken librarian with braided auburn hair, round glasses, and a vintage dress, carefully placing books on a towering wooden shelf.",
-            "A street artist with vibrant green hair, wearing a paint-stained hoodie, spraying a giant mural of a phoenix on a city wall at night.",
-            "A pirate captain with an eyepatch and a long, flowing coat, gripping the wheel of their ship as a storm brews on the horizon.",
-            "A futuristic android with sleek silver plating, glowing blue eyes, and a human-like synthetic face, staring at their reflection in a mirror.",
-            "A mysterious detective in a noir-style trench coat and fedora, smoking a cigar as they examine a cryptic note under a streetlamp.",
-            "A medieval knight in intricately detailed armour, holding a massive sword and standing triumphantly in a battlefield at dawn.",
-            "A punk rock musician with spiky red hair, ripped jeans, and multiple piercings, playing an electric guitar in front of a roaring crowd.",
-            "A space explorer in a sleek astronaut suit, floating weightlessly inside a high-tech spaceship, staring at the distant glow of a nebula.",
-            "A mischievous rogue with a dagger tucked into their belt, smirking as they flip a stolen coin in the dim light of a tavern.",
-            "A cyberpunk hacker with a neon visor and a hooded jacket, typing furiously on a holographic keyboard as data streams across the screen."
-        ]
 
-        self.prompt_index = 0
-        self.diffusion_prompt = self.prompt_array[self.prompt_index]
-        self.negative_prompt = "low quality, bad quality, blurry, malformed"
+        # Load prompts and negative prompts from config
+        self.prompt_array = self.config["prompts"]
+        self.negative_prompt = self.config["negative_prompt"]
+        self.diffusion_prompt = None
+        self.isChangingPrompt = False
 
         # Left frame for controls.
         self.button_frame = tk.Frame(self.root)
         self.button_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
 
-        tk.Button(self.button_frame, text="Triangle",
-                  command=lambda: self.shape_manager.update_shape("triangle")).pack(pady=5, fill=tk.X)
-        tk.Button(self.button_frame, text="Rectangle",
-                  command=lambda: self.shape_manager.update_shape("rectangle")).pack(pady=5, fill=tk.X)
-        tk.Button(self.button_frame, text="Circle",
-                  command=lambda: self.shape_manager.update_shape("circle")).pack(pady=5, fill=tk.X)
+        # Initialize speech recognition
+        self.recognizer = sr.Recognizer()
+        self.listening = False
 
-        tk.Label(self.button_frame, text="Blur Intensity").pack(pady=5)
+       # Load and display the image in the top-left corner
+        image_path = self.config["ui"]["image_icon"] 
+        try:
+            img = Image.open(image_path)
+            img_resized = img.resize((250, 250))  
+            self.logo_image = ImageTk.PhotoImage(img_resized)
+
+            self.image_label = tk.Label(
+                self.button_frame,
+                image=self.logo_image,
+                bg="white",         # White background
+                borderwidth=2,      # Border thickness
+                relief="solid"      # Border style (solid line)
+            )
+            self.image_label.pack(pady=5, anchor='center')  # Centre it in the frame
+        except Exception as e:
+            print(f"Error loading image: {e}")
+
+
+        tk.Label(self.button_frame, text="Blur Intensity",bg="black",fg="white",highlightbackground="black",
+    highlightcolor="black").pack(pady=5, fill=tk.X)
         self.blur_slider = tk.Scale(self.button_frame, from_=1, to=self.config["blur"]["max_value"],
                                     orient=tk.HORIZONTAL, command=self.update_blur)
         self.blur_slider.set(self.config["blur"]["default_slider"])
         self.blur_slider.pack(fill=tk.X)
 
-        tk.Label(self.button_frame, text="Gesture Name").pack(pady=5)
+        tk.Label(self.button_frame, text="Gesture Name",bg="darkorange",fg="white",highlightbackground="black",
+    highlightcolor="black").pack(pady=5, fill=tk.X)
+
+
         self.gesture_entry = tk.Entry(self.button_frame)
         self.gesture_entry.pack(pady=5, fill=tk.X)
 
@@ -75,6 +90,14 @@ class Application:
             .pack(pady=5, fill=tk.X)
         tk.Button(self.button_frame, text="Launch GestureEdit", command=launch_gesture_edit) \
             .pack(pady=5, fill=tk.X)
+
+        # Add Voice button
+        self.voice_button = tk.Button(self.button_frame, text="Voice Recognition", command=self.voice_recognition_action)
+        self.voice_button.pack(pady=5, fill=tk.X)
+                
+        # Add voice result label for displaying
+        self.voice_result_label = tk.Label(self.button_frame, text="", fg="blue", wraplength=200)
+        self.voice_result_label.pack(pady=5, fill=tk.X)
 
         # New diffusion label in the left panel with fixed size.
         self.diffusion_label = tk.Label(self.button_frame)
@@ -92,6 +115,13 @@ class Application:
         self.camera_label = tk.Label(self.video_frame)
         self.camera_label.grid(row=0, column=0, sticky="nsew")
 
+        # Teleprompter banner
+        self.teleprompter_canvas = tk.Canvas(self.video_frame, height=30, bg="black")
+        self.teleprompter_canvas.grid(row=1, column=0, sticky="ew")
+        self.teleprompter_text = self.teleprompter_canvas.create_text(
+            self.teleprompter_canvas.winfo_width(), 15, text="", fill="white", anchor="w"
+        )
+        
         # Initialise camera.
         self.cap = cv2.VideoCapture(self.config["camera"]["device"])
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config["camera"]["frame_width"])
@@ -105,26 +135,30 @@ class Application:
         self.gesture_lib = GestureLibrary(self.config["gesture"]["file"],
                                           similarity_threshold=self.config["gesture"]["similarity_threshold"])
 
-        # Initialise shape manager.
-        self.shape_manager = ShapeManager(self.gesture_lib.library)
-
         # Initialise diffusion pipeline and StreamDiffusion.
-        self.pipe = StableDiffusionPipeline.from_pretrained("KBlueLeaf/kohaku-v2.1").to(
+        base_model_path = self.config["diffusion"]["base_model"]
+        self.pipe = StableDiffusionPipeline.from_pretrained(base_model_path).to(
             device=torch.device("cuda"),
             dtype=torch.float16,
         )
         self.stream = StreamDiffusion(
             self.pipe,
-            t_index_list=[16,18,20,22],
+            # t_index_list=[16,18,20,22],
+            t_index_list = self.config["diffusion"]["t_index_list"],
             torch_dtype=torch.float16,
+            cfg_type = self.config["diffusion"]["cfg_type"] 
         )
-        self.stream.load_lcm_lora()
-        
-        # load multiple lora, if trained properly, each lora should only has effect when the prompt contains keyword
-        self.stream.pipe.load_lora_weights("data/satoru_2.safetensors")
 
+        lora_path = self.config["diffusion"]["lora"]
+        use_lora = self.config["diffusion"]["use_lora"]
+        encoder_path = self.config["diffusion"]["encoder"]
+        self.stream.load_lcm_lora()
+        if use_lora:
+            self.stream.pipe.load_lora_weights(lora_path)
         self.stream.fuse_lora()
-        self.stream.vae = AutoencoderTiny.from_pretrained("madebyollin/taesd").to(
+
+        self.stream.enable_similar_image_filter()
+        self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
             device=self.pipe.device, dtype=self.pipe.dtype)
         self.pipe.enable_xformers_memory_efficient_attention()
 
@@ -133,24 +167,87 @@ class Application:
 
         # Flag to avoid overlapping diffusion tasks.
         self.diffusion_running = False
+        default_key = list(self.prompt_array.keys())[0]
+        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
+        self.previous_prompt = None
         self.prepare_stream()
-
-
-    def prepare_stream(self):
-        pil_image = None # fake image
-        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=25)
-        # Warm up steps.
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Unable to read from camera.")
-            return
-        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(image_rgb).resize((512, 512))
-        self.stream(pil_image)
-        for _ in range(4):
-            _ = self.stream(pil_image)
         
-        #self.text_to_image_pipeline.unet.set_attn_processor(AttnProcessor2_0())
+    def voice_recognition_action(self):
+        """Start voice recognition in a separate thread to avoid blocking UI"""
+        if self.listening:
+            # If already listening, do nothing
+            return
+
+        # Update button appearance to indicate listening
+        self.voice_button.config(text="Listening...", bg="red")
+        self.listening = True
+        
+        # Start listening in a thread
+        threading.Thread(target=self.listen_for_gesture, daemon=True).start()
+    
+    def listen_for_gesture(self):
+        """Listen for voice commands and match with gestures"""
+        try:
+            with sr.Microphone() as source:
+                print("Listening for a gesture name...")
+                # Adjust for ambient noise
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                # Listen for audio input
+                audio = self.recognizer.listen(source, timeout=5)
+                
+            try:
+                # Use Google's speech recognition service
+                text = self.recognizer.recognize_google(audio).lower()
+                print(f"Recognized: {text}")
+                
+                # Match recognized text with gestures
+                found_match = False
+                # Get the available gestures using the get_gestures method 
+                # or access the correct attribute that contains gesture names
+                gesture_names = list(self.gesture_lib.get_all_gestures().keys())
+                
+                for gesture_name in gesture_names:
+                    # Simple check if the recognized text contains the gesture name
+                    if gesture_name.lower() in text:
+                        print(f"Matched gesture: {gesture_name}")
+                        # Update result label with matched gesture
+                        self.root.after(0, lambda g=gesture_name: self.voice_result_label.config(
+                            text=f"Matched: {g}", fg="green"))
+                        # Flag that this is a voice-activated change
+                        self.voice_activated = True
+                        # Update to this gesture in the main thread
+                        self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
+                        found_match = True
+                        break
+                
+                if not found_match:
+                    print(f"No matching gesture found for: {text}")
+                    self.root.after(0, lambda: self.voice_result_label.config(
+                        text="No matching gesture found", fg="orange"))
+                    
+            except sr.UnknownValueError:
+                print("Could not understand audio")
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text="Could not understand audio", fg="red"))
+            
+            except sr.RequestError as error:
+                print(f"Could not request results; {error}")
+                # Store error message in a local variable before using in lambda
+                error_msg = str(error)
+                self.root.after(0, lambda: self.voice_result_label.config(
+                    text=f"Request error: {error_msg[:30]}", fg="red"))
+                    
+        except Exception as error:
+            print(f"Error in voice recognition: {error}")
+            # Store error message in a local variable before using in lambda
+            error_msg = str(error)
+            self.root.after(0, lambda: self.voice_result_label.config(
+                text=f"Error: {error_msg[:30]}...", fg="red"))
+        
+        finally:
+            # Reset button appearance
+            self.root.after(0, lambda: self.voice_button.config(text="Voice Recognition", bg="SystemButtonFace"))
+            self.listening = False
 
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
@@ -180,10 +277,20 @@ class Application:
         self.gesture_lib.add_gesture(side, gesture_name, vectors)
         print(f"Captured gesture '{gesture_name}' for {side} hand.")
 
-        # Update to the next prompt in the array regardless of the gesture name.
-        self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
-        self.diffusion_prompt = self.prompt_array[self.prompt_index]
-        print(f"Updated diffusion prompt to: {self.diffusion_prompt}")
+    def prepare_stream(self):
+            pil_image = None # fake image
+            num_inference_steps = self.config["diffusion"]["num_inference_steps"]
+            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
+            # Warm up steps.
+            ret, frame = self.cap.read()
+            if not ret:
+                print("Unable to read from camera.")
+                return
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb).resize((512, 512))
+            self.stream(pil_image)
+            for _ in range(4):
+                _ = self.stream(pil_image)
 
     def process_diffusion(self, frame):
         # Set flag so no new diffusion is started while running.
@@ -210,35 +317,124 @@ class Application:
         print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
         self.prepare_stream()
 
+
     def show_frame(self):
         ret, frame = self.cap.read()
+        # Check if the frame is valid
+        if not ret:
+            print("Failed to read from camera.")
+            return
+        
         if ret:
             frame = cv2.flip(frame, 1)
             frame = cv2.resize(frame, (self.config["camera"]["frame_width"], self.config["camera"]["frame_height"]))
+            
+           
+            # Continue with object detection or other processing.
             if self.blur_intensity > 1:
-                processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                                 self.blur_intensity, self.hands, self.mp_drawing,
-                                                 trigger_explosion_callback=self.trigger_explosion)
+                processed_frame, classified_gesture = detect_objects(frame , self.gesture_lib,
+                                                self.blur_intensity, self.hands, self.mp_drawing,use_reg_model=self.use_reg_model,reg_model=self.reg_model)
             else:
-                processed_frame = detect_objects(frame, self.shape_manager, self.gesture_lib,
-                                                 None, self.hands, self.mp_drawing,
-                                                 trigger_explosion_callback=self.trigger_explosion)
-                                               
+                processed_frame, classified_gesture = detect_objects(frame, self.gesture_lib,
+                                                None, self.hands, self.mp_drawing,use_reg_model=self.use_reg_model,reg_model=self.reg_model)
+                                                       
+            self.handle_gesture_change(classified_gesture)
+                    
+            # print("d prompt:", self.diffusion_prompt)
+        
             # Start a diffusion process in the background if not already running.
             if not self.diffusion_running:
+                # print("Start diffusion check")
                 threading.Thread(target=self.process_diffusion, args=(frame,), daemon=True).start()
             
+            
+            # Resize frame to fit camera label.
             frame_resized = cv2.resize(processed_frame, (self.camera_label.winfo_width(), self.camera_label.winfo_height()))
             cv2image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
             self.camera_label.imgtk = imgtk
             self.camera_label.configure(image=imgtk)
+            
+            # Update teleprompter text
+            self.update_teleprompter_text(self.diffusion_prompt)
+            
+        
+            
         self.camera_label.after(30, self.show_frame)
+
+    def handle_gesture_change(self, classified_gesture):
+        if classified_gesture and classified_gesture != 'None':
+            self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
+
+
+        style_change_gesture = self.config["gesture"]["style_change_gesture"]
+        if classified_gesture == style_change_gesture or self.isChangingPrompt:
+            self.camera_label.config(borderwidth=5, relief="solid", highlightbackground="red", highlightcolor="red", highlightthickness=5)
+            self.isChangingPrompt = True
+        else:
+            self.camera_label.config(borderwidth=0, relief="flat", highlightthickness=0)
+            self.isChangingPrompt = False
+
+
+        # For voice-activated changes, we need to handle them differently
+        voice_activated = getattr(self, 'voice_activated', False)
+
+        # If it's a voice command or we're in changing prompt mode and the prompt changed
+        if (voice_activated and self.previous_prompt != self.diffusion_prompt) or \
+        (self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None'):
+            print("changing prompt:", self.diffusion_prompt, classified_gesture)
+            
+            # Avoid conflicts with diffusion processing
+            if not self.diffusion_running:
+                # Run prepare_stream in a separate thread
+                threading.Thread(target=self._prepare_stream_safe, daemon=True).start()
+                
+            self.previous_prompt = self.diffusion_prompt
+            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+            
+            # Reset flags
+            if voice_activated:
+                self.voice_activated = False
+            else:
+                self.isChangingPrompt = False
+
+    def _prepare_stream_safe(self):
+        """Thread-safe wrapper for prepare_stream"""
+        # Set flag so diffusion knows we're preparing
+        self.diffusion_running = True
+        try:
+            self.prepare_stream()
+        finally:
+            self.diffusion_running = False
+        
+        
+
+        if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
+            print("changing prompt:", self.diffusion_prompt,classified_gesture)
+            # change prompt here
+            self.prepare_stream()
+            self.previous_prompt = self.diffusion_prompt
+            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+            self.isChangingPrompt = False
+
+
+    def update_teleprompter_text(self, text):
+        self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
+        self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
+        self.scroll_teleprompter()
+
+    def scroll_teleprompter(self):
+        x, y = self.teleprompter_canvas.coords(self.teleprompter_text)
+        if x + self.teleprompter_canvas.bbox(self.teleprompter_text)[2] > 0:
+            # self.teleprompter_canvas.move(self.teleprompter_text, -2, 0)
+            # self.teleprompter_canvas.after(50, self.scroll_teleprompter)
+            self.teleprompter_canvas.move(self.teleprompter_text, -5, 0)  # Increase the move distance
+            self.teleprompter_canvas.after(30, self.scroll_teleprompter)  # Decrease the delay
 
     def run(self):
         self.root.update_idletasks()
-        self.show_frame()
+        self.show_frame()        
         self.root.mainloop()
 
 def start_ui():
