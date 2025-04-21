@@ -10,12 +10,11 @@ from .ml_gesture_recognition import MLGestureRecognition
 import torch
 from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from streamdiffusion import StreamDiffusion
-#from .override import OverrideStreamDiffusion as StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
 import threading
-import numpy as np
 import speech_recognition as sr
 import time
+
 def launch_gesture_edit():
     # Launch GestureEditor
     editor = GestureEditor()
@@ -24,6 +23,7 @@ def launch_gesture_edit():
 class Application:
     def __init__(self):
         self.config = config
+
         self.diffusion_lock = threading.Lock()  # Lock for thread safety
         
         # Increase the window size.
@@ -32,6 +32,7 @@ class Application:
         self.root.geometry("1400x800+50+50")  # Expanded window size
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
+
         # Initialize speech recognition
         self.recognizer = sr.Recognizer()
         self.listening = False
@@ -42,7 +43,7 @@ class Application:
         self.current_gesture = "None"
         self.voice_matched_gesture = "None" # Add initialization for tracking voice-matched gestures separately from camera gestures
         
-        # Load model        
+        # Load model
         self.use_reg_model = self.config["gesture"]["use_model"]
         self.reg_model = None
         self.reg_classes = []
@@ -102,12 +103,12 @@ class Application:
             .pack(pady=5, fill=tk.X)
         tk.Button(self.button_frame, text="Launch GestureEdit", command=launch_gesture_edit) \
             .pack(pady=5, fill=tk.X)
-
-       # Add Voice toggle button with updated text
+            
+        # Add Voice toggle button with updated text
         self.voice_button = tk.Button(self.button_frame, text="Voice Recognition: OFF", 
                                     command=self.toggle_voice_recognition)
         self.voice_button.pack(pady=5, fill=tk.X)
-           
+                
         # Add voice result label for displaying
         self.voice_result_label = tk.Label(self.button_frame, text="", fg="blue", wraplength=200)
         self.voice_result_label.pack(pady=5, fill=tk.X)
@@ -154,48 +155,6 @@ class Application:
             device=torch.device("cuda"),
             dtype=torch.float16,
         )
-        # self.stream = StreamDiffusion(
-        #     self.pipe,
-        #     # t_index_list=[16,18,20,22],
-        #     t_index_list = self.config["diffusion"]["t_index_list"],
-        #     torch_dtype=torch.float16,
-        #     cfg_type = self.config["diffusion"]["cfg_type"] 
-        # )
-
-        # lora_path = self.config["diffusion"]["lora"]
-        # use_lora = self.config["diffusion"]["use_lora"]
-        # encoder_path = self.config["diffusion"]["encoder"]
-        # self.stream.load_lcm_lora()
-        # if use_lora:
-        #     self.stream.pipe.load_lora_weights(lora_path)
-        # self.stream.pipe.unload_lora_weights()  
-        # self.stream.fuse_lora()
-
-        # self.stream.enable_similar_image_filter()
-        # self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
-        #     device=self.pipe.device, dtype=self.pipe.dtype)
-        # self.pipe.enable_xformers_memory_efficient_attention()
-        
-
-        # # Set initial blur intensity.
-        # self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
-
-        # # Flag to avoid overlapping diffusion tasks.
-        # self.diffusion_running = False
-        # default_key = list(self.prompt_array.keys())[0]
-        # self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
-        # self.previous_prompt = None
-
-        # Set initial blur intensity.
-        self.classified_gesture = None
-        self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
-        self.first_flag = True
-
-        # Flag to avoid overlapping diffusion tasks.
-        self.diffusion_running = False
-        default_key = list(self.prompt_array.keys())[0]
-        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
-        self.previous_prompt = None
         self.stream = StreamDiffusion(
             self.pipe,
             # t_index_list=[16,18,20,22],
@@ -204,6 +163,27 @@ class Application:
             cfg_type = self.config["diffusion"]["cfg_type"] 
         )
 
+        lora_path = self.config["diffusion"]["lora"]
+        use_lora = self.config["diffusion"]["use_lora"]
+        encoder_path = self.config["diffusion"]["encoder"]
+        self.stream.load_lcm_lora()
+        if use_lora:
+            self.stream.pipe.load_lora_weights(lora_path)
+        self.stream.fuse_lora()
+
+        self.stream.enable_similar_image_filter()
+        self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
+            device=self.pipe.device, dtype=self.pipe.dtype)
+        self.pipe.enable_xformers_memory_efficient_attention()
+
+        # Set initial blur intensity.
+        self.blur_intensity = max(1, int(self.blur_slider.get()) * 2 + 1)
+
+        # Flag to avoid overlapping diffusion tasks.
+        self.diffusion_running = False
+        default_key = list(self.prompt_array.keys())[0]
+        self.diffusion_prompt = self.prompt_array[default_key] # set default prompt
+        self.previous_prompt = None
         self.prepare_stream()
         
     def toggle_voice_recognition(self):
@@ -410,6 +390,7 @@ class Application:
         self.voice_matched_gesture = gesture_name
         # Update to this gesture in the main thread
         self.root.after(0, lambda g=gesture_name: self.handle_gesture_change(g))
+    
     def update_blur(self, value):
         self.blur_intensity = max(1, int(value) * 2 + 1)
 
@@ -439,45 +420,19 @@ class Application:
         print(f"Captured gesture '{gesture_name}' for {side} hand.")
 
     def prepare_stream(self):
-        self.stream.pipe.unload_lora_weights()  
-        lora_path = self.config["diffusion"]["lora"]
-        use_lora = self.config["diffusion"]["use_lora"]
-        encoder_path = self.config["diffusion"]["encoder"]
-        print(f"load {self.classified_gesture}")
-        self.stream.load_lcm_lora()
-        if use_lora and (self.classified_gesture in ("satoru", "1", 1)):
-            print("check lora loaded")
-            self.stream.pipe.load_lora_weights(lora_path)
-        else:
-            pass
-            #self.stream.pipe.load_lora_weights(lora_path)
-        
-        # self.stream.fuse_lora()
-
-        if self.first_flag:
-            self.stream.pipe.load_lora_weights(lora_path)
-            self.stream.enable_similar_image_filter()
-            self.stream.vae = AutoencoderTiny.from_pretrained(encoder_path).to(
-                device=self.pipe.device, dtype=self.pipe.dtype)
-            self.pipe.enable_xformers_memory_efficient_attention()
-            self.first_flag = False
-
-        pil_image = None # fake images
-        print("start preprare diff stream")
-        num_inference_steps = self.config["diffusion"]["num_inference_steps"]
-        self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
-        # Warm up steps.
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Unable to read from camera.")
-            return
-        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(image_rgb).resize((512, 512))
-        self.stream(pil_image)
-        for _ in range(4):
-            _ = self.stream(pil_image)
-        
-        print("end of prepare diff stream")
+            pil_image = None # fake image
+            num_inference_steps = self.config["diffusion"]["num_inference_steps"]
+            self.stream.prepare(self.diffusion_prompt, negative_prompt=self.negative_prompt, num_inference_steps=num_inference_steps)
+            # Warm up steps.
+            ret, frame = self.cap.read()
+            if not ret:
+                print("Unable to read from camera.")
+                return
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(image_rgb).resize((512, 512))
+            self.stream(pil_image)
+            for _ in range(4):
+                _ = self.stream(pil_image)
 
     def process_diffusion(self, frame):
         # Set flag so no new diffusion is started while running.
@@ -502,17 +457,12 @@ class Application:
             if getattr(self, 'prompt_needs_update', False):
                 self.prompt_needs_update = False
                 threading.Thread(target=self._prepare_stream_safe, daemon=True).start()
+            
     def update_diffusion_label(self, imgtk):
         self.diffusion_label.config(image=imgtk)
         self.diffusion_label.image = imgtk  # Keep a reference.
 
-    def trigger_explosion(self):
-        self.prompt_index = (self.prompt_index + 1) % len(self.prompt_array)
-        self.diffusion_prompt = self.prompt_array[self.prompt_index]
-        print(f"Explosion triggered, updated diffusion prompt to: {self.diffusion_prompt}")
-        self.prepare_stream()
-
-
+    
     def show_frame(self):
         ret, frame = self.cap.read()
         # Check if the frame is valid
@@ -557,17 +507,17 @@ class Application:
         
             
         self.camera_label.after(30, self.show_frame)
-
+        
     def handle_gesture_change(self, classified_gesture):
         if classified_gesture and classified_gesture != 'None':
             self.diffusion_prompt = self.prompt_array.get(classified_gesture, self.diffusion_prompt)
-            self.classified_gesture = classified_gesture
-            
+
+        # Update the current_gesture (but NOT voice_result_label unless from voice activation)
+        self.current_gesture = classified_gesture
 
         # Only update the label if this was voice-activated
         voice_activated = getattr(self, 'voice_activated', False)
         
-
         style_change_gesture = self.config["gesture"]["style_change_gesture"]
         if classified_gesture == style_change_gesture or self.isChangingPrompt:
             self.camera_label.config(borderwidth=5, relief="solid", highlightbackground="red", highlightcolor="red", highlightthickness=5)
@@ -583,6 +533,7 @@ class Application:
             
             # Create a "needs update" flag instead of requiring immediate action
             self.prompt_needs_update = True
+        
             # Avoid conflicts with diffusion processing
             if not self.diffusion_running:
                 # Run prepare_stream in a separate thread
@@ -600,27 +551,13 @@ class Application:
     def _prepare_stream_safe(self):
         """Thread-safe wrapper for prepare_stream"""
         # Set flag so diffusion knows we're preparing
-        print("oreprare strean safe")
-        self.diffusion_running = True
-        try:
-            self.prepare_stream()
-        except Exception as e:
-            print(e)
-        finally:
-            print("setting diffusion running to False")
-            self.diffusion_running = False
-        
-        
-
-        if self.isChangingPrompt and self.previous_prompt != self.diffusion_prompt and classified_gesture != 'None':
-            print("changing prompt x:", self.diffusion_prompt,classified_gesture)
-            # change prompt here
-            self.prepare_stream()
-            self.previous_prompt = self.diffusion_prompt
-            self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
-            self.isChangingPrompt = False
-
-
+        with self.diffusion_lock:
+            self.diffusion_running = True
+            try:
+                self.prepare_stream()
+            finally:
+                self.diffusion_running = False
+    
     def update_teleprompter_text(self, text):
         self.teleprompter_canvas.itemconfig(self.teleprompter_text, text=text)
         self.teleprompter_canvas.coords(self.teleprompter_text, self.teleprompter_canvas.winfo_width(), 15)
