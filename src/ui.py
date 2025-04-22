@@ -15,6 +15,7 @@ from streamdiffusion.image_utils import postprocess_image
 import threading
 import numpy as np
 import speech_recognition as sr
+from .controlnet import StableDiffusionControlNetPipeline, controlnet
 
 def launch_gesture_edit():
     # Launch GestureEditor
@@ -141,6 +142,9 @@ class Application:
             device=torch.device("cuda"),
             dtype=torch.float16,
         )
+        # self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
+        #     r"KBlueLeaf/kohaku-v2.1", controlnet=controlnet, safety_checker=None, torch_dtype=torch.float16
+        # ).to("cuda")
         # self.stream = StreamDiffusion(
         #     self.pipe,
         #     # t_index_list=[16,18,20,22],
