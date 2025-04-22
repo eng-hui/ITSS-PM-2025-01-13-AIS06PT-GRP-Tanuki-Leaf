@@ -16,6 +16,7 @@ diffusion:
   encoder: "madebyollin/taesd"
   use_lora: true
   lora: "lora/satoru_2.safetensors"
+  controlnet: true
 
 
 shape:

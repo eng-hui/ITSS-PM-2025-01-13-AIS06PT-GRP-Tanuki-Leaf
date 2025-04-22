@@ -189,6 +189,7 @@ class OverrideStreamDiffusion(StreamDiffusion):
 
     def get_a_b_control_net(self, a, b, o_image):
         o_image = o_image[0].permute(1, 2, 0)
+        print(o_image.shape)
         image = self.pipe.prepare_image(    
                 image=openpose(o_image.cpu()),
                 width=512,

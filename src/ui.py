@@ -9,13 +9,17 @@ from .gestureedit import GestureEditor  # Import GestureEditor
 from .ml_gesture_recognition import MLGestureRecognition
 import torch
 from diffusers import AutoencoderTiny, StableDiffusionPipeline
-from streamdiffusion import StreamDiffusion
-#from .override import OverrideStreamDiffusion as StreamDiffusion
+
 from streamdiffusion.image_utils import postprocess_image
 import threading
 import numpy as np
-import speech_recognition as sr
-from .controlnet import StableDiffusionControlNetPipeline, controlnet
+import speech_recognition as srs
+if config["diffusion"]["controlnet"]:
+    print("load controlnet")
+    from .override import OverrideStreamDiffusion as StreamDiffusion
+    from .controlnet import StableDiffusionControlNetPipeline, controlnet
+else:
+    from streamdiffusion import StreamDiffusion
 
 def launch_gesture_edit():
     # Launch GestureEditor
@@ -51,7 +55,7 @@ class Application:
         self.button_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
 
         # Initialize speech recognition
-        self.recognizer = sr.Recognizer()
+        self.recognizer = srs.Recognizer()
         self.listening = False
 
        # Load and display the image in the top-left corner
@@ -138,13 +142,16 @@ class Application:
 
         # Initialise diffusion pipeline and StreamDiffusion.
         base_model_path = self.config["diffusion"]["base_model"]
-        self.pipe = StableDiffusionPipeline.from_pretrained(base_model_path).to(
-            device=torch.device("cuda"),
-            dtype=torch.float16,
-        )
-        # self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
-        #     r"KBlueLeaf/kohaku-v2.1", controlnet=controlnet, safety_checker=None, torch_dtype=torch.float16
-        # ).to("cuda")
+        if self.config["diffusion"]["controlnet"]:
+            self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
+                base_model_path, controlnet=controlnet, safety_checker=None, torch_dtype=torch.float16
+            ).to("cuda")
+        else:
+            self.pipe = StableDiffusionPipeline.from_pretrained(base_model_path).to(
+                device=torch.device("cuda"),
+                dtype=torch.float16,
+            )
+
         # self.stream = StreamDiffusion(
         #     self.pipe,
         #     # t_index_list=[16,18,20,22],
