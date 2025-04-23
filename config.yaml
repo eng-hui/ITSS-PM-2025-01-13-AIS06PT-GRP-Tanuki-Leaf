@@ -15,7 +15,8 @@ diffusion:
   base_model: "KBlueLeaf/kohaku-v2.1"
   encoder: "madebyollin/taesd"
   use_lora: false
-  lora: "lora/satoru.safetensors"
+  lora: "lora/satoru_2.safetensors"
+  controlnet: true
 
 
 shape:
