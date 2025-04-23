@@ -14,9 +14,9 @@ diffusion:
   num_inference_steps: 30  # Number of inference steps
   base_model: "KBlueLeaf/kohaku-v2.1"
   encoder: "madebyollin/taesd"
-  use_lora: false
-  lora: "lora/satoru_2.safetensors"
-  controlnet: true
+  use_lora: true
+  lora: "lora/satoru.safetensors"
+  controlnet: false
 
 
 shape:

@@ -10,6 +10,7 @@ dependencies:
   - pyyaml
   - pip
   - pip:
+    - controlnet-aux
     - opencv-python
     - mediapipe
     - msvc-runtime
