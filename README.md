@@ -1,14 +1,12 @@
 ---
 
 ## PROJECT TITLE  
-## Tanuki Leaf – Real-Time AI Avatar Generation for Interactive Streaming  
+## Tanuki Leaf: Real-Time Diffusion Avatar Generation   
 
 ![Tanuki Leaf Logo](image/logo.png)
 
 ---
 ## Executive Summary
-
-**Project Title**: Tanuki Leaf: Real-Time Diffusion Avatar Generation  
 
 ### Overview
 
@@ -45,14 +43,28 @@ Tanuki Leaf is an intelligent, real-time avatar generation system built for stre
 
 Tanuki Leaf exemplifies the fusion of cutting-edge AI and user-centric design, empowering content creators with accessible, dynamic, and interactive digital identities.
 
+---
 
+## PROJECT TEAM MEMBERS
 
+| Official Full Name  | Student ID | Email  |
+| :------------ |:---------------:| :-----|
+| Tan Eng Hui | A0291201W | e1330340@u.nus.edu |
+| Hu Lei | A0120681N | e1329735@u.nus.edu |
+| Wang Tao | A0291189R | e1330328@u.nus.edu |
+| Ho Zi Hao Timothy| A0150123B | e0015027@u.nus.edu |
+
+## PROJECT REPORT
+
+Refer to [Project Report.pdf](ProjectReport/Project%20Report.pdf) in the **ProjectReport** folder
 
 ---
-## Prerequisites
-- Anaconda installed on your system.
 
 ## Setup
+
+### Prerequisites
+- Anaconda installed on your system.
+- GPU (CUDA) supported e.g. NVIDIA RTX 3060~4080 
 
 ### Step 1: Create the Conda Environment
 1. Ensure you have the `environment.yaml` file in the root directory of your project. 
@@ -81,12 +93,3 @@ Tanuki Leaf exemplifies the fusion of cutting-edge AI and user-centric design, e
     ```sh
     python -m src.main
     ```
-
-## Usage
-The application provides a GUI for capturing and processing hand gestures. Use the buttons and controls in the GUI to interact with the application.
-
-## Troubleshooting
-If you encounter any issues, ensure that all dependencies are installed correctly and that the conda environment is activated.
-
-## License
-This project is licensed under the MIT License.
