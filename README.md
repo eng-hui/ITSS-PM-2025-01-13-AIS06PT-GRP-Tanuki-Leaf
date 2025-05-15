@@ -88,5 +88,7 @@ Refer to [Project Report.pdf](ProjectReport/Project%20Report.pdf) in the **Proje
     python -m src.main
     ```
 ---
-![Application With Posture](image/screenshot_app.png){width=200}
-![Application Broadcast](image/screenshot_broadcast.png){width=200}
+<p align="center">
+  <img src="image/screenshot_app.png" alt="Application With Posture" width="45%" />
+  <img src="image/screenshot_broadcast.png" alt="Application Broadcast" width="45%" />
+</p>
