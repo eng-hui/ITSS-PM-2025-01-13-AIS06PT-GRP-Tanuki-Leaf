@@ -10,38 +10,32 @@
 
 ### Overview
 
-Tanuki Leaf is an intelligent, real-time avatar generation system built for streamers, gamers, and digital creators. The project addresses the challenges of high entry barriers, fragmented workflows, and limited personalisation found in traditional avatar creation tools. Our solution leverages AI-powered tools to create avatars driven by webcam input, natural language prompts, and hand gestures.
+Content creators, livestreamers, and digital entertainers often face high technical and creative barriers when building personalised avatars for interactive media. Traditional avatar creation is time-consuming, requiring specialised tools and coordination between modellers, riggers, and streamers. Moreover, existing systems often lack seamless integration with gesture and speech control, limiting real-time responsiveness and user engagement.
 
-### Key Features
+**Tanuki Leaf** is an AI-powered solution that transforms webcam feeds into animated, stylised avatars using real-time diffusion models and gesture recognition. By combining natural language prompts, hand gestures, and speech commands, it allows users to create and control expressive avatars in real time, reducing onboarding time and unlocking creative possibilities for digital identity and interaction.
 
-- **Real-Time Avatar Generation**: Uses LoRA-fine-tuned diffusion models to create consistent, stylised avatars from live webcam feeds.
-- **Gesture-Based Control**: Integrates Mediapipe and traditional ML models to recognise hand gestures and trigger avatar behaviours.
-- **Prompt Personalisation**: Enables detailed visual control of avatars using structured, weighted natural language prompts.
-- **Voice Interaction**: Implements speech recognition to allow hands-free control over avatar switching.
-- **Streaming Integration**: Seamlessly combines avatar visuals with live gameplay through OBS for platforms like Twitch and YouTube.
+## Solution Benefits
 
-### Technical Highlights
+Tanuki Leaf offers an innovative solution with the following capabilities:
 
-- **Diffusion Engine**: StreamDiffusion framework with integrated ControlNet for pose consistency and low-latency performance.
-- **LoRA & DreamBooth**: Fine-tunes avatar appearance efficiently using small datasets for rapid personalisation.
-- **Machine Learning Models**: Evaluated YOLO and Mediapipe for hand tracking; trained classifiers (e.g., Decision Tree) for gesture recognition.
-- **Prompt Engineering**: Achieved high visual consistency with weighted token prompts and modular LoRA injection.
+- **Real-time avatar generation** using diffusion models trained via LoRA and DreamBooth, ensuring consistent and personalised outputs from simple webcam feeds.
+- **Gesture-based interaction** through hand tracking and classification, allowing users to trigger avatar actions and changes with intuitive hand movements.
+- **Voice-activated control** via automatic speech recognition (ASR), supporting hands-free switching of avatars and commands.
+- **Seamless streaming integration** with platforms like OBS, enabling creators to broadcast dynamic avatars alongside live content on Twitch, YouTube, and more.
 
-### Outcomes
+---
 
-- Reduced avatar creation time from weeks to minutes.
-- Achieved usable frame rates (10–20+ FPS) on consumer-grade hardware.
-- Delivered a fully functional MVP with real-time responsiveness, gesture recognition, and voice control.
-- Demonstrated streaming-ready integration with platforms via OBS.
+## Market Landscape and Opportunity
 
-### Future Directions
+In Singapore’s digitally connected and innovation-driven landscape, content creation and interactive streaming are rapidly growing. Tanuki Leaf addresses the needs of a new generation of digital storytellers and performers by reducing the complexity of avatar-based engagement. Its lightweight, modular design allows it to run on consumer-grade hardware and integrate into existing broadcasting setups.
 
-- Enhance temporal consistency and avatar stability during continuous rendering.
-- Expand gesture vocabulary and incorporate facial tracking for richer interaction.
-- Develop a web-based, lightweight version for broader accessibility.
-- Automate prompt generation using adaptive, user-feedback-driven systems.
+While initially scoped for local creators, the technology has strong potential for global adoption in gaming, VTubing, education, and virtual events—anywhere users need a personalised, expressive digital presence without the traditional production overhead.
 
-Tanuki Leaf exemplifies the fusion of cutting-edge AI and user-centric design, empowering content creators with accessible, dynamic, and interactive digital identities.
+---
+
+## Conclusion and Future Prospects
+
+Tanuki Leaf aims to evolve into a plug-and-play avatar toolkit that lowers technical barriers and enhances real-time user interaction. Future development will focus on improving avatar motion consistency, expanding gesture vocabularies, enabling facial tracking, and refining UI/UX for broader accessibility. By streamlining avatar generation into a real-time, user-friendly pipeline, Tanuki Leaf empowers creators to build authentic digital identities and engage their audiences more dynamically and intuitively.
 
 ---
 
