@@ -88,5 +88,5 @@ Refer to [Project Report.pdf](ProjectReport/Project%20Report.pdf) in the **Proje
     python -m src.main
     ```
 ---
-
-![Application Broadcast](image/screenshot_broadcast.png)
+![Application With Posture](image/screenshot_app.png){width=200}
+![Application Broadcast](image/screenshot_broadcast.png){width=200}
