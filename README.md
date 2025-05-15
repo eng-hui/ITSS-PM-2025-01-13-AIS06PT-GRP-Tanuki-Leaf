@@ -87,3 +87,6 @@ Refer to [Project Report.pdf](ProjectReport/Project%20Report.pdf) in the **Proje
     ```sh
     python -m src.main
     ```
+---
+
+![Application Broadcast](image/screenshot_broadcast.png)
